@@ -9,7 +9,36 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH to production server
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Sync files to production server
+        run: |
+          echo "=== Syncing files to production ==="
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='venv' \
+            --exclude='*.log' \
+            --exclude='.env' \
+            --exclude='.terraform' \
+            --exclude='*.tfstate' \
+            --exclude='.cline' \
+            -e 'ssh -i ~/.ssh/deploy_key' \
+            ./ volodro@${{ secrets.SERVER_IP }}:/home/volodro/
+          echo "✅ Files synced"
+
+      - name: Deploy and restart SkyDash
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_IP }}
@@ -17,24 +46,10 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            echo "=== SkyDash Deployment Started ==="
+            echo "=== Starting deployment ==="
             echo "Date: $(date)"
-            echo "User: $(whoami)"
-            echo "Host: $(hostname)"
 
             cd /home/volodro
-
-            # Clone repo if not present, otherwise pull
-            if [ ! -d .git ]; then
-              echo "=== First-time setup: cloning repo ==="
-              git clone https://github.com/DadjMahal/TerraSky.git /tmp/terrasky_init
-              cp -rn /tmp/terrasky_init/. .
-              rm -rf /tmp/terrasky_init
-            else
-              echo "=== Pulling latest code ==="
-              git stash 2>/dev/null || true
-              git pull origin main
-            fi
 
             echo "=== Stopping existing SkyDash ==="
             pkill -f '[a]pp.py' 2>/dev/null || true
@@ -74,6 +89,7 @@ jobs:
               echo "✅ Deployment SUCCESSFUL!"
             else
               echo "⚠️  SkyDash may not be ready yet (HTTP $HTTP_CODE)"
-              echo "Check logs: tail -20 /home/volodro/skydash/flask.log"
+              echo "Last log lines:"
+              tail -10 /home/volodro/skydash/flask.log 2>/dev/null || echo "No log file"
             fi
             echo "=== Deployment complete at $(date) ==="
