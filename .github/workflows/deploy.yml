@@ -13,32 +13,67 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_IP }}
-          username: ubuntu
+          username: volodro
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            echo "=== Stopping existing SkyDash process ==="
+            set -e
+            echo "=== SkyDash Deployment Started ==="
+            echo "Date: $(date)"
+            echo "User: $(whoami)"
+            echo "Host: $(hostname)"
+
+            cd /home/volodro
+
+            # Clone repo if not present, otherwise pull
+            if [ ! -d .git ]; then
+              echo "=== First-time setup: cloning repo ==="
+              git clone https://github.com/DadjMahal/TerraSky.git /tmp/terrasky_init
+              cp -rn /tmp/terrasky_init/. .
+              rm -rf /tmp/terrasky_init
+            else
+              echo "=== Pulling latest code ==="
+              git stash 2>/dev/null || true
+              git pull origin main
+            fi
+
+            echo "=== Stopping existing SkyDash ==="
             pkill -f '[a]pp.py' 2>/dev/null || true
             sleep 1
 
-            echo "=== Pulling latest code ==="
-            cd /home/volodro
-            if [ ! -d .git ]; then
-              git clone https://github.com/DadjMahal/TerraSky.git /tmp/terrasky_clone 2>/dev/null || true
-              if [ -d /tmp/terrasky_clone ]; then
-                cp -rn /tmp/terrasky_clone/. .
-              fi
+            # Create Python venv if not present
+            if [ ! -d skydash/venv ]; then
+              echo "=== Creating Python virtual environment ==="
+              cd skydash
+              python3 -m venv venv
+              cd /home/volodro
             fi
-            git pull origin main 2>/dev/null || git pull https://github.com/DadjMahal/TerraSky.git main
+
+            echo "=== Installing Python dependencies ==="
+            cd skydash
+            source venv/bin/activate
+            pip install --quiet flask boto3 azure-identity azure-mgmt-compute oci alibabacloud-ecs20140526 paramiko werkzeug 2>/dev/null
+
+            echo "=== Loading environment variables ==="
+            if [ -f /home/volodro/terraform/.env ]; then
+              set -a
+              source /home/volodro/terraform/.env
+              set +a
+              echo "Cloud credentials loaded from terraform/.env"
+            else
+              echo "WARNING: terraform/.env not found. SkyDash will start without cloud credentials."
+            fi
 
             echo "=== Starting SkyDash ==="
-            cd /home/volodro/skydash
-            set -a
-            source /home/volodro/terraform/.env 2>/dev/null || true
-            set +a
             nohup venv/bin/python app.py > flask.log 2>&1 &
             sleep 3
 
             echo "=== Health check ==="
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login)
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login 2>/dev/null || echo "000")
             echo "SkyDash HTTP status: $HTTP_CODE"
-            echo "=== Deploy complete at $(date) ==="
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "302" ]; then
+              echo "✅ Deployment SUCCESSFUL!"
+            else
+              echo "⚠️  SkyDash may not be ready yet (HTTP $HTTP_CODE)"
+              echo "Check logs: tail -20 /home/volodro/skydash/flask.log"
+            fi
+            echo "=== Deployment complete at $(date) ==="
