@@ -54,31 +54,56 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/volodro/skydash
+            set -e  # Fail on any error
+
             if ! python3 -c "import venv, ensurepip" 2>/dev/null; then
               sudo apt-get install -y python3.12-venv 2>&1 | tail -1
             fi
+
+            # Stop old instance (bracket trick avoids matching this command itself)
             pkill -f "[a]pp.py" 2>/dev/null || true
             sleep 1
+
             if [ ! -x venv/bin/python ]; then
               python3 -m venv venv
             fi
+
             source venv/bin/activate
-            # Install from pinned requirements.txt (full reproducibility)
+
+            # Install from pinned requirements.txt
             if [ -f requirements.txt ]; then
-              pip install --quiet --no-cache-dir -r requirements.txt
+              pip install -r requirements.txt
+              echo "Dependencies installed"
             else
               echo "::error::requirements.txt missing after sync"
               exit 1
             fi
+
+            # Load environment variables
             if [ -f /home/volodro/terraform/.env ]; then
-              set -a; source /home/volodro/terraform/.env; set +a
+              set -a
+              source /home/volodro/terraform/.env
+              set +a
             fi
-            setsid nohup venv/bin/python app.py > flask.log 2>&1 &
-            sleep 4
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login 2>/dev/null || echo 000)
-            echo "SkyDash HTTP: $CODE"
-            if [ "$CODE" != "200" ]; then
-              echo "::error::Health check failed — SkyDash returned HTTP $CODE"
-              exit 1
-            fi
-            echo "Deploy successful"
+
+            # Start app in background
+            nohup venv/bin/python app.py > flask.log 2>&1 &
+            APP_PID=$!
+            echo "App started with PID $APP_PID"
+
+            # Wait for app to be ready
+            sleep 6
+
+            # Health check with retries
+            for i in 1 2 3; do
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login 2>/dev/null || echo 000)
+              echo "Health check attempt $i: HTTP $CODE"
+              if [ "$CODE" = "200" ]; then
+                echo "Deploy successful"
+                exit 0
+              fi
+              sleep 3
+            done
+
+            echo "::error::Health check failed after multiple attempts"
+            exit 1
