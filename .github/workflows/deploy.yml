@@ -17,9 +17,9 @@ jobs:
       - name: Validate Python syntax (pre-deploy gate)
         run: |
           cd skydash
-          python -m py_compile app.py auth.py config_store.py hermes_agent.py models.py state_reader.py instance_specs.py
+          python3 -m py_compile app.py auth.py config_store.py hermes_agent.py models.py state_reader.py instance_specs.py
           for f in providers/*.py; do
-            python -m py_compile "$f"
+            python3 -m py_compile "$f"
           done
           echo "Syntax validation passed"
 
