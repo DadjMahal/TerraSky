@@ -46,8 +46,8 @@ SDKs are imported lazily inside provider methods to keep memory low.
 
 | Item | Status |
 |------|--------|
-| 🔄 **Last Session Activity** | SSH key configured for Hermes Agent (2026-07-31) |
-| ✅ **Last Completed Task | SSH key configured for Hermes Agent (logs working, tmux detected) |
+| 🔄 **Last Session Activity** | CI/CD pipeline review & hardening (2026-08-01) |
+| ✅ **Last Completed Task** | CI/CD deploy.yml improvements: requirements.txt, pre-deploy validation, error handling, health check |
 | 🎯 **Next Step** | Set secure admin password (SKYDASH_ADMIN_PASSWORD) |
 | 📁 **Key Files to Read** | `app.py`, `config_store.py`, `templates/admin.html` |
 | 📍 **Session Summary** | `skydash/docs/session_summary_refactor_ui_admin.md` |
@@ -247,6 +247,9 @@ Instance model -> _apply_overrides (config_store) -> template.
 cd ~/skydash
 source venv/bin/activate
 
+# Install/update dependencies from pinned requirements.txt
+pip install -r requirements.txt
+
 # Stop the running instance (bracket trick avoids matching this command itself)
 pkill -f '[a]pp.py'
 
@@ -311,6 +314,10 @@ Flask auto-starts after reboot via **crontab** (loads `~/terraform/.env`).
 | 31 | **Edit Instance feature** | 2026-07-31 | ✏️ Edit button, modal with display_name/description/tags |
 | 32 | **Documentation consolidation** | 2026-07-31 | Context Checkpoint, priority TODO, merged reports |
 | 33 | **SSH key configured for Hermes Agent** | 2026-07-31 | Ed25519 key, authorized_keys added, .env configured |
+| 34 | **CI/CD review & hardening** | 2026-08-01 | Reviewed deploy.yml, generated requirements.txt |
+| 35 | **requirements.txt with pinned deps** | 2026-08-01 | Direct deps pinned; pip dry-run verified |
+| 36 | **Pre-deploy syntax validation in CI/CD** | 2026-08-01 | py_compile gate before rsync; fails fast on syntax errors |
+| 37 | **Crontab double-start fix** | 2026-08-01 | Removed duplicate @reboot entry that caused "Address already in use" |
 
 ### 🔴 URGENT
 
@@ -458,3 +465,6 @@ table** (Section 7) immediately. This ensures that:
 - **Workflow**: `.github/workflows/deploy.yml`
 - **Deploy target**: 74.248.232.219 via SSH
 - **Secrets**: `SSH_PRIVATE_KEY`, `SERVER_IP` (in GitHub repo settings)
+- **Dependencies**: `skydash/requirements.txt` (pinned, pip-resolved transitive deps)
+- **Pre-deploy gate**: `py_compile` syntax check on all Python files before rsync
+- **Health check**: Fails CI if `/login` doesn't return HTTP 200 after restart

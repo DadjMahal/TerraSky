@@ -1,0 +1,24 @@
+# SkyDash — pinned dependencies for reproducible deployments
+# Only direct imports are pinned; transitive deps are resolved by pip.
+# Generated from venv pip freeze matching the production environment.
+
+# --- Web framework ---
+Flask==3.1.3
+Werkzeug==3.1.8
+
+# --- Cloud provider SDKs (direct imports in providers/*.py) ---
+boto3==1.43.58
+azure-identity==1.25.3
+azure-mgmt-compute==38.2.0
+azure-mgmt-network==31.0.1
+oci==2.183.0
+alibabacloud-ecs20140526==7.9.2
+alibabacloud-tea-openapi==0.4.5
+
+# --- SSH (Hermes Agent log retrieval) ---
+paramiko==5.0.0
+
+# --- Auth (password hashing) ---
+# Werkzeug (above) provides check_password_hash/generate_password_hash
+# bcrypt is a transitive dependency of paramiko/Werkzeug, auto-installed
+

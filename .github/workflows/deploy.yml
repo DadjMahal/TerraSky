@@ -12,30 +12,38 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
+
+      - name: Validate Python syntax (pre-deploy gate)
+        run: |
+          cd skydash
+          python -m py_compile app.py auth.py config_store.py hermes_agent.py models.py state_reader.py instance_specs.py
+          for f in providers/*.py; do
+            python -m py_compile "$f"
+          done
+          echo "Syntax validation passed"
 
       - name: Install SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Sync project files to production (safe, no --delete)
+      - name: Sync project files (safe, no --delete)
         run: |
-          echo "=== Syncing project dirs (never touches .ssh, .bashrc, config) ==="
-          rsync -avz -e 'ssh -i ~/.ssh/deploy_key' \
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
             skydash/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/skydash/ \
-            --exclude='__pycache__' --exclude='*.pyc' --exclude='venv/' \
-            --exclude='*.log' --exclude='.env'
-          rsync -avz -e 'ssh -i ~/.ssh/deploy_key' \
+            --exclude="__pycache__" --exclude="*.pyc" --exclude="venv/" \
+            --exclude="*.log" --exclude=".env"
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
             Documentation/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/Documentation/
-          rsync -avz -e 'ssh -i ~/.ssh/deploy_key' \
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
             .github/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/.github/
-          rsync -avz -e 'ssh -i ~/.ssh/deploy_key' \
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
             terraform/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/terraform/ \
-            --exclude='.terraform/' --exclude='*.tfstate' --exclude='*.tfstate.*' \
-            --exclude='.env'
+            --exclude=".terraform/" --exclude="*.tfstate" --exclude="*.tfstate.*" \
+            --exclude=".env"
           echo "Files synced"
 
       - name: Deploy and restart SkyDash
@@ -45,34 +53,32 @@ jobs:
           username: volodro
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-                        cd /home/volodro/skydash
-
-            # Ensure python3-venv is available
+            cd /home/volodro/skydash
             if ! python3 -c "import venv, ensurepip" 2>/dev/null; then
-              echo "Installing python3-venv..."
               sudo apt-get install -y python3.12-venv 2>&1 | tail -1
             fi
-
-            # Stop old instance
-            pkill -f '[a]pp.py' 2>/dev/null || true
+            pkill -f "[a]pp.py" 2>/dev/null || true
             sleep 1
-
-            # Create venv if missing + install deps
             if [ ! -x venv/bin/python ]; then
-              echo "Creating venv..."
               python3 -m venv venv
             fi
             source venv/bin/activate
-            pip install --quiet flask boto3 azure-identity azure-mgmt-compute oci alibabacloud-ecs20140526 paramiko werkzeug 2>/dev/null || echo "pip install skipped/warned - using existing deps"
-
-            # Load .env if present
+            # Install from pinned requirements.txt (full reproducibility)
+            if [ -f requirements.txt ]; then
+              pip install --quiet --no-cache-dir -r requirements.txt
+            else
+              echo "::error::requirements.txt missing after sync"
+              exit 1
+            fi
             if [ -f /home/volodro/terraform/.env ]; then
               set -a; source /home/volodro/terraform/.env; set +a
             fi
-
-            echo "Starting SkyDash..."
             setsid nohup venv/bin/python app.py > flask.log 2>&1 &
             sleep 4
-
             CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login 2>/dev/null || echo 000)
             echo "SkyDash HTTP: $CODE"
+            if [ "$CODE" != "200" ]; then
+              echo "::error::Health check failed — SkyDash returned HTTP $CODE"
+              exit 1
+            fi
+            echo "Deploy successful"
