@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block title %}📊 Dashboard | {{ site_name }}{% endblock %}
+{% block nav_actions %}
+            <span class="badge bg-secondary" id="instance-count">{{ instances|length }} 🖥️</span>
+            <span class="badge bg-info text-dark" title="Auto-refresh every 30s">🔄 Auto</span>
+            <a href="/refresh" class="btn btn-outline-light btn-sm">🔄 Refresh</a>
+{% endblock %}
+{% block content %}
+    <div class="content-card p-3 mb-3">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">🔍</span>
+                    <input type="text" id="search" class="form-control" placeholder="Search name, provider, type, region, IP...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select id="filter-provider" class="form-select form-select-sm">
+                    <option value="">🌐 All providers</option>
+                    <option value="aws">☁️ AWS</option>
+                    <option value="azure">☁️ Azure</option>
+                    <option value="oracle">☁️ Oracle</option>
+                    <option value="alibaba">☁️ Alibaba</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="filter-status" class="form-select form-select-sm">
+                    <option value="">📋 All statuses</option>
+                    <option value="running">🟢 Running</option>
+                    <option value="stopped">🔴 Stopped</option>
+                    <option value="starting">🟡 Starting</option>
+                    <option value="stopping">🟠 Stopping</option>
+                    <option value="error">❌ Error</option>
+                    <option value="unknown">❓ Unknown</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select id="sort-by" class="form-select form-select-sm">
+                    <option value="name">🔤 Sort: Name</option>
+                    <option value="provider">☁️ Sort: Provider</option>
+                    <option value="status">🚦 Sort: Status</option>
+                    <option value="region">🌍 Sort: Region</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3" id="cards">
+        {% for i in instances %}
+        <div class="col-12 col-md-6 col-xxl-4 card-col" data-slug="{{ i.slug }}"
+             data-name="{{ i.name|lower }}" data-provider="{{ i.provider }}"
+             data-status="loading" data-region="{{ i.region|lower }}"
+             data-type="{{ i.instance_type|lower }}">
+            <div class="content-card instance-card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center bg-white" style="border-radius: 1rem 1rem 0 0;">
+                    <span>
+                        <i class="bi {{ i.icon }} provider-icon"></i>
+                        <a href="/instance/{{ i.slug }}" class="text-decoration-none fw-semibold">{{ i.name }}</a>
+                    </span>
+                    <span class="badge bg-secondary status-badge" data-status-badge>⏳ Loading...</span>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2 small">
+                        <div class="col-6"><div class="kv-label">🖥️ Type</div><div class="kv-value">{{ i.instance_type or '—' }}</div></div>
+                        <div class="col-6"><div class="kv-label">🌍 Region</div><div class="kv-value">{{ i.region or '—' }}</div></div>
+                        <div class="col-6"><div class="kv-label">📍 Zone</div><div class="kv-value">{{ i.availability_zone or '—' }}</div></div>
+                        <div class="col-6"><div class="kv-label">💻 OS</div><div class="kv-value">{{ i.os or '—' }}</div></div>
+                        <div class="col-6"><div class="kv-label">🌐 Public IP</div><div class="kv-value"><code data-ip="public">{{ i.public_ip or '—' }}</code></div></div>
+                        <div class="col-6"><div class="kv-label">🔒 Private IP</div><div class="kv-value"><code data-ip="private">{{ i.private_ip or '—' }}</code></div></div>
+                        <div class="col-6"><div class="kv-label">⚙️ CPU</div><div class="kv-value">{{ i.cpu or '—' }}</div></div>
+                        <div class="col-6"><div class="kv-label">💾 RAM</div><div class="kv-value">{{ i.ram or '—' }}</div></div>
+                        <div class="col-6"><div class="kv-label">💽 Disk</div><div class="kv-value">{{ i.disk_size or '—' }}</div></div>
+                        <div class="col-6"><div class="kv-label">📅 Created</div><div class="kv-value">{{ i.creation_date or '—' }}</div></div>
+                    </div>
+                    {% if i.tags %}
+                    <div class="mt-2">
+                        {% for k, v in i.tags.items() %}<span class="badge bg-light text-dark border me-1">🏷️ {{ k }}: {{ v }}</span>{% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center bg-white" style="border-radius: 0 0 1rem 1rem;">
+                    <div class="btn-group btn-group-sm" data-actions>
+                        <button class="btn btn-success" data-action="start" {% if not i.can_manage %}disabled{% endif %}>🚀 Start</button>
+                        <button class="btn btn-danger" data-action="stop" {% if not i.can_manage %}disabled{% endif %}>⛔ Stop</button>
+                        <button class="btn btn-outline-secondary" data-action="refresh">🔄</button>
+                    </div>
+                    <a href="/instance/{{ i.slug }}" class="btn btn-sm btn-outline-primary">📝 Details →</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not instances %}
+    <div class="alert alert-info">No instances found. 🤷</div>
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// --- Status badge rendering -------------------------------------------------
+const STATUS_META = {
+    running:  {cls: 'bg-success', label: 'Running'},
+    stopped:  {cls: 'bg-danger',  label: 'Stopped'},
+    starting: {cls: 'bg-info text-dark', label: 'Starting...'},
+    stopping: {cls: 'bg-warning text-dark', label: 'Stopping...'},
+    error:    {cls: 'bg-danger',  label: 'Error'},
+    unknown:  {cls: 'bg-secondary', label: 'Unknown'},
+    loading:  {cls: 'bg-secondary', label: 'Loading...'}
+};
+function badgeHtml(status) {
+    const m = STATUS_META[status] || STATUS_META.unknown;
+    return `<span class="badge ${m.cls} status-badge" data-status-badge>${m.label}</span>`;
+}
+function setCardStatus(card, status) {
+    card.dataset.status = status;
+    card.querySelector('[data-status-badge]').outerHTML = badgeHtml(status);
+}
+
+// --- Toast ------------------------------------------------------------------
+const toastEl = document.getElementById('toast');
+const toast = new bootstrap.Toast(toastEl, {delay: 3500});
+function showToast(msg, ok = true) {
+    toastEl.className = `toast align-items-center text-white border-0 ${ok ? 'bg-dark' : 'bg-danger'} hide`;
+    document.getElementById('toast-body').textContent = msg;
+    toast.show();
+}
+
+// --- Live status polling ----------------------------------------------------
+async function fetchStatuses(showToastMsg = true) {
+    try {
+        const res = await fetch('/api/statuses', {cache: 'no-store'});
+        const data = await res.json();
+        data.forEach(s => {
+            const card = document.querySelector(`.card-col[data-slug="${s.slug}"]`);
+            if (!card) return;
+            card.dataset.canManage = s.can_manage ? '1' : '0';
+            setCardStatus(card, s.status);
+            // Update IPs in the card using data attributes (robust targeting)
+            const pubEl = card.querySelector('[data-ip="public"]');
+            const privEl = card.querySelector('[data-ip="private"]');
+            if (pubEl && s.public_ip) pubEl.textContent = s.public_ip;
+            if (privEl && s.private_ip) privEl.textContent = s.private_ip;
+            const grp = card.querySelector('[data-actions]');
+            grp.querySelectorAll('button').forEach(b => b.disabled = !s.can_manage);
+            if (s.error && s.status === 'error') card.title = s.error;
+        });
+        applyFilters();
+        if (showToastMsg) showToast('Statuses refreshed');
+    } catch (e) { showToast('Failed to refresh statuses', false); }
+}
+
+// --- Search / filter / sort -------------------------------------------------
+function applyFilters() {
+    const q = document.getElementById('search').value.trim().toLowerCase();
+    const fp = document.getElementById('filter-provider').value;
+    const fs = document.getElementById('filter-status').value;
+    document.querySelectorAll('.card-col').forEach(card => {
+        const hay = `${card.dataset.name} ${card.dataset.provider} ${card.dataset.type} ${card.dataset.region} ${card.dataset.slug}`;
+        const okQ = !q || hay.includes(q);
+        const okP = !fp || card.dataset.provider === fp;
+        const okS = !fs || card.dataset.status === fs;
+        card.style.display = (okQ && okP && okS) ? '' : 'none';
+    });
+}
+function applySort() {
+    const key = document.getElementById('sort-by').value;
+    const grid = document.getElementById('cards');
+    const cols = Array.from(grid.querySelectorAll('.card-col'));
+    cols.sort((a, b) => (a.dataset[key] || '').localeCompare(b.dataset[key] || ''));
+    cols.forEach(c => grid.appendChild(c));
+}
+['search','filter-provider','filter-status'].forEach(id =>
+    document.getElementById(id).addEventListener('input', applyFilters));
+document.getElementById('sort-by').addEventListener('change', applySort);
+
+// --- Loader modal -------------------------------------------------
+const loaderModal = new bootstrap.Modal(document.getElementById('loaderModal'));
+function showLoader(title, message) {
+    const t = document.getElementById('loaderTitle');
+    if (t) t.textContent = title;
+    const m = document.getElementById('loaderMessage');
+    if (m) m.textContent = message;
+    loaderModal.show();
+}
+
+// --- Instance actions (AJAX with multi-stage progress) --------------------
+async function pollUntilSettled(card, slug, targetState, maxTries = 10) {
+    // Poll /api/statuses until the instance reaches targetState or times out.
+    for (let i = 0; i < maxTries; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        try {
+            const res = await fetch('/api/statuses', {cache: 'no-store'});
+            const data = await res.json();
+            const s = data.find(x => x.slug === slug);
+            if (!s) continue;
+            setCardStatus(card, s.status);
+            if (s.status === targetState) {
+                const pubEl = card.querySelector('[data-ip="public"]');
+                const privEl = card.querySelector('[data-ip="private"]');
+                if (pubEl && s.public_ip) pubEl.textContent = s.public_ip;
+                if (privEl && s.private_ip) privEl.textContent = s.private_ip;
+                return true;
+            }
+            if (s.status === 'error') return false;
+            // Update loader message with current status
+            updateLoader(`Waiting for ${slug}... current state: ${s.status}`);
+        } catch (e) { /* keep polling */ }
+    }
+    return false;
+}
+
+function updateLoader(message) {
+    const el = document.getElementById('loaderMessage');
+    if (el) el.textContent = message;
+}
+
+document.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('button[data-action]');
+    if (!btn) return;
+    const card = btn.closest('.card-col');
+    const slug = card.dataset.slug;
+    const action = btn.dataset.action;
+    const providerName = card.dataset.provider || '';
+    const targetState = action === 'start' ? 'running' : 'stopped';
+
+    if (action === 'refresh') {
+        showToast('Refreshing all statuses...', true);
+        showLoader('Refreshing', 'Fetching live status from all cloud APIs...');
+        await fetchStatuses(false);
+        loaderModal.hide();
+        showToast('All statuses refreshed successfully', true);
+        return;
+    }
+
+    if (!confirm(`${action.charAt(0).toUpperCase()+action.slice(1)} instance "${slug}"?`)) return;
+
+    // Disable buttons during action
+    card.querySelectorAll('button[data-action]').forEach(b => b.disabled = true);
+
+    // Stage 1: Sending request
+    showLoader(`${action.charAt(0).toUpperCase()+action.slice(1)} ${slug}`, `Stage 1/3: Sending ${action} request to ${providerName} API...`);
+    setCardStatus(card, action === 'start' ? 'starting' : 'stopping');
+
+    try {
+        const res = await fetch(`/instance/${slug}/${action}`, {method: 'POST'});
+        const data = await res.json();
+
+        if (!data.ok) {
+            showToast(`${action} FAILED: ${data.message}`, false);
+            setCardStatus(card, 'error');
+            return;
+        }
+
+        // Stage 2: Request accepted, polling
+        showToast(`${data.message} — polling for completion...`, true);
+        updateLoader(`Stage 2/3: Request accepted. Polling for status change...`);
+
+        // Stage 3: Poll until settled
+        const settled = await pollUntilSettled(card, slug, targetState);
+
+        if (settled) {
+            showToast(`${slug} is now ${targetState.toUpperCase()} ✓`, true);
+            updateLoader(`Stage 3/3: Instance is now ${targetState} ✓`);
+        } else {
+            showToast(`${slug}: action sent but status not yet confirmed. It may take longer.`, false);
+            setCardStatus(card, action === 'start' ? 'starting' : 'stopping');
+        }
+    } catch (e) {
+        showToast(`${action} request failed: ${e.message}`, false);
+        setCardStatus(card, 'error');
+    } finally {
+        loaderModal.hide();
+        // Re-enable buttons based on can_manage
+        fetchStatuses(false);
+    }
+});
+
+// --- Init: initial live status + auto-refresh every 30s ---------------------
+fetchStatuses();
+setInterval(fetchStatuses, 30000);
+
+</script>
+{% endblock %}

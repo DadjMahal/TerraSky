@@ -1,0 +1,12 @@
+{
+  "site_name": "SkyDash",
+  "site_description": "Test desc",
+  "favicon_url": "",
+  "logo_url": "",
+  "admin_username": "admin",
+  "admin_email": "",
+  "admin_password_hash": "",
+  "hidden_instances": [],
+  "instance_overrides": {},
+  "custom_instances": []
+}

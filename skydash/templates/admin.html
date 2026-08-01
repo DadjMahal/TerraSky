@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}⚙️ Admin Panel | {{ site_name }}{% endblock %}
+{% block content %}
+<div class="content-card p-4 mb-4">
+    <h2 class="mb-3">⚙️ Admin Panel</h2>
+    <ul class="nav nav-tabs mb-3" id="admin-tabs">
+        <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#settings">🌍 Site Settings</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#profile">👤 Profile</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#instances">🖥️ Instances</a></li>
+    </ul>
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="settings">
+            <form method="POST" action="/admin/settings">
+                <div class="mb-3"><label class="form-label">🏷️ Site Name</label>
+                    <input type="text" name="site_name" class="form-control" value="{{ site_settings.site_name }}"></div>
+                <div class="mb-3"><label class="form-label">📝 Meta Description (SEO)</label>
+                    <input type="text" name="site_description" class="form-control" value="{{ site_settings.site_description }}"></div>
+                <div class="mb-3"><label class="form-label">🎨 Favicon URL</label>
+                    <input type="text" name="favicon_url" class="form-control" value="{{ site_settings.favicon_url }}" placeholder="https://example.com/favicon.ico"></div>
+                <div class="mb-3"><label class="form-label">🖼️ Logo URL</label>
+                    <input type="text" name="logo_url" class="form-control" value="{{ site_settings.logo_url }}" placeholder="https://example.com/logo.png"></div>
+                <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+            </form>
+        </div>
+        <div class="tab-pane fade" id="profile">
+            <form method="POST" action="/admin/profile" class="mb-4">
+                <h5>👤 Edit Profile</h5>
+                <div class="mb-3"><label class="form-label">Username</label>
+                    <input type="text" name="username" class="form-control" value="{{ profile.username }}"></div>
+                <div class="mb-3"><label class="form-label">📧 Email</label>
+                    <input type="email" name="email" class="form-control" value="{{ profile.email }}" placeholder="admin@example.com"></div>
+                <button type="submit" class="btn btn-primary">💾 Save Profile</button>
+            </form>
+            <hr>
+            <form method="POST" action="/admin/password">
+                <h5>🔑 Change Password</h5>
+                <div class="mb-3"><label class="form-label">Current Password</label>
+                    <input type="password" name="current_password" class="form-control" required></div>
+                <div class="mb-3"><label class="form-label">New Password</label>
+                    <input type="password" name="new_password" class="form-control" required></div>
+                <div class="mb-3"><label class="form-label">Confirm Password</label>
+                    <input type="password" name="confirm_password" class="form-control" required></div>
+                <button type="submit" class="btn btn-warning">🔑 Change Password</button>
+            </form>
+        </div>
+        <div class="tab-pane fade" id="instances">
+            <h5>🖥️ Instance Management</h5>
+            <p class="text-muted small">Hide/show or add custom instances.</p>
+            <table class="table table-sm table-hover">
+                <thead><tr><th>Name</th><th>Provider</th><th>Slug</th><th>Hidden</th><th>Actions</th></tr></thead>
+                <tbody>
+                {% for inst in all_instances %}
+                <tr><td>{{ inst.name }}</td><td>{{ inst.provider }}</td><td><code>{{ inst.slug }}</code></td>
+                    <td>{% if inst.slug in hidden_instances %}🚫 Yes{% else %}✅ No{% endif %}</td>
+                    <td>
+                        {% if inst.slug in hidden_instances %}<a href="/admin/instance/{{ inst.slug }}/unhide" class="btn btn-sm btn-success">👁️ Show</a>{% else %}<a href="/admin/instance/{{ inst.slug }}/hide" class="btn btn-sm btn-warning">🙈 Hide</a>{% endif %}
+                        <a href="/admin/instance/{{ inst.slug }}/edit" class="btn btn-sm btn-info">✏️ Edit</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <hr><h5>➕ Add Custom Instance</h5>
+            <form method="POST" action="/admin/instance/add" class="row g-2 align-items-end">
+                <div class="col-md-2"><label class="form-label">Provider</label><select name="provider" class="form-select"><option value="aws">AWS</option><option value="azure">Azure</option><option value="oracle">Oracle</option><option value="alibaba">Alibaba</option></select></div>
+                <div class="col-md-3"><label class="form-label">Instance ID</label><input type="text" name="instance_id" class="form-control" placeholder="i-xxx" required></div>
+                <div class="col-md-2"><label class="form-label">Name</label><input type="text" name="name" class="form-control" placeholder="MyVM" required></div>
+                <div class="col-md-2"><label class="form-label">Region</label><input type="text" name="region" class="form-control" placeholder="us-east-1"></div>
+                <div class="col-md-2"><label class="form-label">Type</label><input type="text" name="instance_type" class="form-control" placeholder="t3.micro"></div>
+                <div class="col-md-1"><button type="submit" class="btn btn-success w-100">➕</button></div>
+            </form>
+            {% if custom_instances %}
+            <hr><h6>Custom Instances</h6>
+            <table class="table table-sm"><thead><tr><th>Name</th><th>Provider</th><th>ID</th><th></th></tr></thead><tbody>
+            {% for ci in custom_instances %}
+            <tr><td>{{ ci.name }}</td><td>{{ ci.provider }}</td><td><code>{{ ci.instance_id }}</code></td><td><a href="/admin/instance/{{ ci.instance_id }}/remove" class="btn btn-sm btn-danger">🗑️</a></td></tr>
+            {% endfor %}</tbody></table>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% if edit_slug %}
+<!-- Edit Instance Modal -->
+<div class="modal fade show" id="editModal" tabindex="-1" aria-modal="true" style="display:block;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">✏️ Edit Instance: <code>{{ edit_slug }}</code></h5>
+                <a href="/admin" class="btn-close"></a>
+            </div>
+            <form method="POST" action="/admin/instance/{{ edit_slug }}/edit">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">🏷️ Display Name</label>
+                        <input type="text" name="display_name" class="form-control" value="{{ edit_override.get('display_name', edit_instance.name) }}" placeholder="Custom display name">
+                        <div class="form-text">Leave empty to use original name: <strong>{{ edit_instance.name }}</strong></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">📝 Description</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="Instance description...">{{ edit_override.get('description', '') }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">🏷️ Tags</label>
+                        <input type="text" name="tags" class="form-control" value="{{ edit_override.get('tags', [])|join(', ') }}" placeholder="tag1, tag2, tag3">
+                        <div class="form-text">Comma-separated list of tags.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="/admin" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop fade show"></div>
+{% endif %}
+{% endblock %}

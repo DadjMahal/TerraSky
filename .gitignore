@@ -1,0 +1,50 @@
+# ============================================================
+# Ignore EVERYTHING at top level, then whitelist project dirs
+# (git is in the home dir, so we exclude personal files)
+# ============================================================
+/*
+
+# Whitelist: project files we WANT in the repo
+!.gitignore
+!.github/
+!.github/**
+!terraform/
+!skydash/
+!Documentation/
+!DOCUMENTATION_REVIEW.md
+
+# ============================================================
+# Re-ignore sensitive/junk INSIDE whitelisted dirs
+# ============================================================
+
+# Secrets — NEVER commit
+terraform/.env
+.env
+.env.backup
+*.tfvars
+*.tfvars.json
+
+# Terraform state & plugins
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate*
+terraform/*.tfstate.*
+terraform/crash.log
+
+# Python
+skydash/venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+skydash/__pycache__/
+skydash/**/__pycache__/
+
+# Logs
+*.log
+skydash/flask.log
+skydash/autostart.log
+
+# Cline session data (large, private)
+.cline/

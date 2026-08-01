@@ -1,0 +1,130 @@
+# Prompt Execution Logging Rules
+
+## Purpose
+
+Track every action performed by Cline in order to:
+
+- recover context after context window resets;
+- simplify debugging;
+- maintain an execution history;
+- improve project documentation.
+
+---
+
+## Log Location
+
+Logs must be stored in:
+
+```text
+Documentation/logs/
+```
+
+Filename format:
+
+```text
+YYYY-MM-DD_HH-MM-SS_prompt-summary.log
+```
+
+Example:
+
+```text
+2026-07-29_14-30-00_fix-azure-statuses.log
+```
+
+---
+
+## Log Structure
+
+```text
+=== START OF PROMPT ===
+
+Date: 2026-07-29 14:30:00
+
+Prompt (user):
+"Add statuses for Azure instances"
+
+Context:
+- README.md reviewed
+- Terraform state loaded
+- Flask admin panel available
+
+--- ACTIONS ---
+
+1. Read README.md
+2. Reviewed current Flask implementation
+3. Designed Azure CLI integration
+4. Waited for user confirmation
+5. Modified app.py
+6. Added get_azure_status()
+7. Restarted Flask
+8. Tested application
+
+--- ERRORS / PROBLEMS ---
+
+Error:
+Azure CLI not installed.
+
+Solution:
+Installed Azure CLI using apt.
+
+Error:
+Authentication failure.
+
+Solution:
+User updated credentials.
+
+--- RESULT ---
+
+Azure VM statuses are now displayed correctly.
+
+README.md updated.
+
+--- SUGGESTIONS / NEXT STEPS ---
+
+- Add Azure Start/Stop support.
+- Continue implementing unified cloud management.
+
+=== END OF PROMPT ===
+```
+
+---
+
+## Required Fields
+
+Every log must contain:
+
+- Start date and time
+- Exact user prompt
+- Context used
+- Chronological list of actions
+- Errors encountered
+- Solutions applied
+- Final result
+- Suggestions for future improvements
+
+---
+
+## Logging Rules
+
+### New Prompt
+
+Create a **new log file** for every new user prompt.
+
+### Multi-step Tasks
+
+If a prompt spans multiple stages, continue writing to the same log file until the task is completed.
+
+### Completion
+
+After finishing a task, Cline must:
+
+1. Save the log.
+2. Update `README.md` if the project has changed.
+
+### Context Recovery
+
+If conversation context is lost (new chat window), Cline must first:
+
+1. Read the latest log files.
+2. Read `README.md`.
+3. Restore project context before performing any new task.

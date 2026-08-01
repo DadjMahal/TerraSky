@@ -1,0 +1,44 @@
+name: Deploy SkyDash to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH to production server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "=== Stopping existing SkyDash process ==="
+            pkill -f '[a]pp.py' 2>/dev/null || true
+            sleep 1
+
+            echo "=== Pulling latest code ==="
+            cd /home/volodro
+            if [ ! -d .git ]; then
+              git clone https://github.com/DadjMahal/TerraSky.git /tmp/terrasky_clone 2>/dev/null || true
+              if [ -d /tmp/terrasky_clone ]; then
+                cp -rn /tmp/terrasky_clone/. .
+              fi
+            fi
+            git pull origin main 2>/dev/null || git pull https://github.com/DadjMahal/TerraSky.git main
+
+            echo "=== Starting SkyDash ==="
+            cd /home/volodro/skydash
+            set -a
+            source /home/volodro/terraform/.env 2>/dev/null || true
+            set +a
+            nohup venv/bin/python app.py > flask.log 2>&1 &
+            sleep 3
+
+            echo "=== Health check ==="
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login)
+            echo "SkyDash HTTP status: $HTTP_CODE"
+            echo "=== Deploy complete at $(date) ==="
