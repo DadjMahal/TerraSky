@@ -448,3 +448,13 @@ table** (Section 7) immediately. This ensures that:
 
 ### Status values
 `running` · `stopped` · `starting` · `stopping` · `error` · `unknown` · `loading`
+
+---
+
+## 11. Git & CI/CD
+
+- **Repository**: https://github.com/DadjMahal/TerraSky (private)
+- **CI/CD**: GitHub Actions auto-deploy on push to `main`
+- **Workflow**: `.github/workflows/deploy.yml`
+- **Deploy target**: 74.248.232.219 via SSH
+- **Secrets**: `SSH_PRIVATE_KEY`, `SERVER_IP` (in GitHub repo settings)
