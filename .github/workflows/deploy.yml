@@ -21,40 +21,22 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Sync project files to production
+      - name: Sync project files to production (safe, no --delete)
         run: |
-          echo "=== Syncing files to production (NO --delete, safe) ==="
-          # Sync only specific project dirs — NEVER touch .ssh, .bashrc, etc.
-          rsync -avz \
-            -e 'ssh -i ~/.ssh/deploy_key' \
-            skydash/ \
-            volodro@${{ secrets.SERVER_IP }}:/home/volodro/skydash/ \
-            --exclude='__pycache__' \
-            --exclude='*.pyc' \
-            --exclude='venv/' \
-            --exclude='*.log' \
+          echo "=== Syncing project dirs (never touches .ssh, .bashrc, config) ==="
+          rsync -avz -e 'ssh -i ~/.ssh/deploy_key' \
+            skydash/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/skydash/ \
+            --exclude='__pycache__' --exclude='*.pyc' --exclude='venv/' \
+            --exclude='*.log' --exclude='.env'
+          rsync -avz -e 'ssh -i ~/.ssh/deploy_key' \
+            Documentation/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/Documentation/
+          rsync -avz -e 'ssh -i ~/.ssh/deploy_key' \
+            .github/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/.github/
+          rsync -avz -e 'ssh -i ~/.ssh/deploy_key' \
+            terraform/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/terraform/ \
+            --exclude='.terraform/' --exclude='*.tfstate' --exclude='*.tfstate.*' \
             --exclude='.env'
-
-          rsync -avz \
-            -e 'ssh -i ~/.ssh/deploy_key' \
-            Documentation/ \
-            volodro@${{ secrets.SERVER_IP }}:/home/volodro/Documentation/
-
-          rsync -avz \
-            -e 'ssh -i ~/.ssh/deploy_key' \
-            .github/ \
-            volodro@${{ secrets.SERVER_IP }}:/home/volodro/.github/
-
-          rsync -avz \
-            -e 'ssh -i ~/.ssh/deploy_key' \
-            terraform/ \
-            volodro@${{ secrets.SERVER_IP }}:/home/volodro/terraform/ \
-            --exclude='.terraform/' \
-            --exclude='*.tfstate' \
-            --exclude='*.tfstate.*' \
-            --exclude='.env'
-
-          echo "✅ Files synced"
+          echo "Files synced"
 
       - name: Deploy and restart SkyDash
         uses: appleboy/ssh-action@v1.0.3
@@ -64,41 +46,34 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            echo "=== Starting deployment ==="
-            cd /home/volodro
+            cd /home/volodro/skydash
 
-            echo "=== Stopping existing SkyDash ==="
+            # Ensure python3-venv is available
+            if ! python3 -c "import venv, ensurepip" 2>/dev/null; then
+              echo "Installing python3-venv..."
+              sudo apt-get install -y python3.12-venv 2>&1 | tail -1
+            fi
+
+            # Stop old instance
             pkill -f '[a]pp.py' 2>/dev/null || true
             sleep 1
 
-            # Create Python venv if not present
-            if [ ! -d skydash/venv ]; then
-              echo "=== Creating Python virtual environment ==="
-              cd skydash
+            # Create venv if missing + install deps
+            if [ ! -x venv/bin/python ]; then
+              echo "Creating venv..."
               python3 -m venv venv
-              cd /home/volodro
             fi
-
-            echo "=== Installing Python dependencies ==="
-            cd skydash
             source venv/bin/activate
             pip install --quiet flask boto3 azure-identity azure-mgmt-compute oci alibabacloud-ecs20140526 paramiko werkzeug 2>/dev/null
 
-            echo "=== Loading environment variables ==="
+            # Load .env if present
             if [ -f /home/volodro/terraform/.env ]; then
-              set -a
-              source /home/volodro/terraform/.env
-              set +a
-              echo "Cloud credentials loaded"
-            else
-              echo "WARNING: terraform/.env not found"
+              set -a; source /home/volodro/terraform/.env; set +a
             fi
 
-            echo "=== Starting SkyDash ==="
-            nohup venv/bin/python app.py > flask.log 2>&1 &
-            sleep 3
+            echo "Starting SkyDash..."
+            setsid nohup venv/bin/python app.py > flask.log 2>&1 &
+            sleep 4
 
-            echo "=== Health check ==="
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login 2>/dev/null || echo "000")
-            echo "SkyDash HTTP status: $HTTP_CODE"
-            echo "=== Deployment complete at $(date) ==="
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login 2>/dev/null || echo 000)
+            echo "SkyDash HTTP: $CODE"
