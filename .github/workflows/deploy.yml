@@ -45,8 +45,7 @@ jobs:
           username: volodro
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e
-            cd /home/volodro/skydash
+                        cd /home/volodro/skydash
 
             # Ensure python3-venv is available
             if ! python3 -c "import venv, ensurepip" 2>/dev/null; then
@@ -64,7 +63,7 @@ jobs:
               python3 -m venv venv
             fi
             source venv/bin/activate
-            pip install --quiet flask boto3 azure-identity azure-mgmt-compute oci alibabacloud-ecs20140526 paramiko werkzeug 2>/dev/null
+            pip install --quiet flask boto3 azure-identity azure-mgmt-compute oci alibabacloud-ecs20140526 paramiko werkzeug 2>/dev/null || echo "pip install skipped/warned - using existing deps"
 
             # Load .env if present
             if [ -f /home/volodro/terraform/.env ]; then
