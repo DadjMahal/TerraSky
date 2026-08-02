@@ -78,8 +78,6 @@ jobs:
               python3 -m venv venv
             fi
 
-            # venv activated via full paths
-
             # Install from pinned requirements.txt
             if [ -f requirements.txt ]; then
               venv/bin/pip install -r requirements.txt
