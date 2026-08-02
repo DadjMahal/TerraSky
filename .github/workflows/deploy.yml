@@ -29,6 +29,11 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          # Add Hermes Agent key for log retrieval
+          if [ -n "${{ secrets.HERMES_SSH_KEY }}" ]; then
+            echo "${{ secrets.HERMES_SSH_KEY }}" > ~/.ssh/skydash_hermes
+            chmod 600 ~/.ssh/skydash_hermes
+          fi
 
       - name: Sync project files (safe, no --delete)
         run: |
@@ -42,9 +47,14 @@ jobs:
             .github/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/.github/
           rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
             terraform/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/terraform/ \
-            --exclude=".terraform/" --exclude="*.tfstate" --exclude="*.tfstate.*" \
-            --exclude=".env"
+            --exclude=".terraform/" --exclude=".env"
           echo "Files synced"
+
+      - name: Sync Hermes SSH key
+        run: |
+          if [ -n "${{ secrets.HERMES_SSH_KEY }}" ]; then
+            rsync -avz -e "ssh -i ~/.ssh/deploy_key" ~/.ssh/skydash_hermes volodro@${{ secrets.SERVER_IP }}:/home/volodro/.ssh/ 2>/dev/null || echo "Hermes key sync skipped (secret not configured)"
+          fi
 
       - name: Deploy and restart SkyDash
         uses: appleboy/ssh-action@v1.0.5
@@ -68,11 +78,11 @@ jobs:
               python3 -m venv venv
             fi
 
-            source venv/bin/activate
+            # venv activated via full paths
 
             # Install from pinned requirements.txt
             if [ -f requirements.txt ]; then
-              pip install -r requirements.txt
+              venv/bin/pip install -r requirements.txt
               echo "Dependencies installed"
             else
               echo "::error::requirements.txt missing after sync"
