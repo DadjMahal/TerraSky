@@ -57,7 +57,7 @@ jobs:
           fi
 
       - name: Deploy and restart SkyDash
-        uses: appleboy/ssh-action@v1.0.5
+        uses: appleboy/ssh-action@v2.0.0
         with:
           host: ${{ secrets.SERVER_IP }}
           username: volodro
