@@ -29,35 +29,43 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
-          # Add Hermes Agent key for log retrieval
           if [ -n "${{ secrets.HERMES_SSH_KEY }}" ]; then
             echo "${{ secrets.HERMES_SSH_KEY }}" > ~/.ssh/skydash_hermes
             chmod 600 ~/.ssh/skydash_hermes
           fi
 
-      - name: Sync project files (safe, no --delete)
+      - name: Sync project files
         run: |
           rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
             skydash/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/skydash/ \
             --exclude="__pycache__" --exclude="*.pyc" --exclude="venv/" \
             --exclude="*.log" --exclude=".env"
           rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
-            Documentation/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/Documentation/
-          rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
-            .github/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/.github/
-          rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
             terraform/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/terraform/ \
             --exclude=".terraform/" --exclude=".env"
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
+            ~/.ssh/skydash_hermes volodro@${{ secrets.SERVER_IP }}:/home/volodro/.ssh/ 2>/dev/null || true
           echo "Files synced"
-
-      - name: Sync Hermes SSH key
-        run: |
-          if [ -n "${{ secrets.HERMES_SSH_KEY }}" ]; then
-            rsync -avz -e "ssh -i ~/.ssh/deploy_key" ~/.ssh/skydash_hermes volodro@${{ secrets.SERVER_IP }}:/home/volodro/.ssh/ 2>/dev/null || echo "Hermes key sync skipped (secret not configured)"
-          fi
 
       - name: Deploy and restart SkyDash
         uses: webfactory/ssh-agent@v0.5.1
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: ssh volodro@${{ secrets.SERVER_IP }} 'cd /home/volodro/skydash && pkill -f "[a]pp.py" 2>/dev/null || true && sleep 1 && set -a && source /home/volodro/terraform/.env && set +a && nohup venv/bin/python app.py > flask.log 2>&1 & sleep 6 && curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login | grep -q "200" && echo "Deploy successful" || { echo "Failed"; exit 1; }'
+          script: |
+            set -e
+            cd /home/volodro/skydash
+            pkill -f "[a]pp.py" 2>/dev/null || true
+            sleep 1
+            set -a
+            source /home/volodro/terraform/.env
+            set +a
+            nohup venv/bin/python app.py > flask.log 2>&1 &
+            echo "App started with PID $!"
+            sleep 6
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login)
+            echo "Health check: HTTP $CODE"
+            if [ "$CODE" = "200" ]; then
+              echo "Deploy successful"
+            else
+              exit 1
+            fi
