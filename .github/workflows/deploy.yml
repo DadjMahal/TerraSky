@@ -54,18 +54,53 @@ jobs:
           script: |
             set -e
             cd /home/volodro/skydash
+            
+            # Kill existing Flask process
             pkill -f "[a]pp.py" 2>/dev/null || true
-            sleep 1
+            sleep 2
+            
+            # Load environment variables
             set -a
             source /home/volodro/terraform/.env
             set +a
+            
+            # Verify Python environment
+            echo "=== Verifying Python environment ==="
+            venv/bin/python --version
+            echo "=== Testing Flask import ==="
+            venv/bin/python -c "from app import app; print('Flask app imports OK')"
+            
+            # Start Flask app
+            echo "=== Starting Flask app ==="
             nohup venv/bin/python app.py > flask.log 2>&1 &
             echo "App started with PID $!"
-            sleep 6
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login)
-            echo "Health check: HTTP $CODE"
-            if [ "$CODE" = "200" ]; then
-              echo "Deploy successful"
+            
+            # Wait for app to be ready
+            sleep 5
+            
+            # Check if process is running
+            if pgrep -f "[a]pp.py" > /dev/null; then
+                echo "✅ Flask process is running"
             else
-              exit 1
+                echo "❌ Flask process not found"
+                cat flask.log
+                exit 1
             fi
+            
+            # Health check with retries
+            echo "=== Health check ==="
+            MAX_RETRIES=5
+            for i in $(seq 1 $MAX_RETRIES); do
+                CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://localhost:8080/login 2>/dev/null || echo "000")
+                echo "Attempt $i: HTTP $CODE"
+                if [ "$CODE" = "200" ]; then
+                    echo "✅ Deploy successful"
+                    exit 0
+                fi
+                sleep 2
+            done
+            
+            echo "❌ Health check failed after $MAX_RETRIES attempts"
+            echo "=== Flask log ==="
+            cat flask.log
+            exit 1
