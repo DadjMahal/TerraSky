@@ -47,7 +47,7 @@
 
     <div class="row g-3" id="cards">
         {% for i in instances %}
-        <div class="col-12 col-md-6 col-xxl-4 card-col" data-slug="{{ i.slug }}"
+        <div class="col-12 col-md-6 col-xxl-4 card-col fade-in" data-slug="{{ i.slug }}"
              data-name="{{ i.name|lower }}" data-provider="{{ i.provider }}"
              data-status="loading" data-region="{{ i.region|lower }}"
              data-type="{{ i.instance_type|lower }}">
