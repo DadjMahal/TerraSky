@@ -136,6 +136,43 @@ def api_statuses():
     # Return in the same order as the instance list
     return jsonify([results.get(inst.slug, {"slug": inst.slug, "status": "unknown", "can_manage": False, "error": "", "public_ip": "", "private_ip": ""}) for inst in instances])
 
+
+def _parse_size(value: str) -> float:
+    """Parse a spec string like '2 vCPU' / '16 GB' into a plain number."""
+    import re
+    m = re.search(r"(\d+(?:\.\d+)?)", str(value))
+    return float(m.group(1)) if m else 0.0
+
+
+@app.route("/api/load")
+@login_required
+def api_load():
+    """Per-instance CPU/RAM data for the dashboard resource bars (#7).
+
+    Returns each instance's configured vCPU count and RAM (GB) as parsed from the
+    Terraform inventory, plus fleet max values so the front-end can render
+    relative progress bars. Live utilization requires the SSH agent (Hermes,
+    Cat 3) — this endpoint intentionally exposes only real inventory specs.
+    """
+    instances = get_instances()
+    cpus = [_parse_size(i.cpu) for i in instances]
+    rams = [_parse_size(i.ram) for i in instances]
+    fleet_max_cpu = max(cpus) if cpus else 1
+    fleet_max_ram = max(rams) if rams else 1
+    data = []
+    for i, (cpu, ram) in zip(instances, zip(cpus, rams)):
+        data.append({
+            "slug": i.slug,
+            "cpu_vcpus": cpu,
+            "ram_gb": ram,
+            "cpu_pct": round((cpu / fleet_max_cpu) * 100) if fleet_max_cpu else 0,
+            "ram_pct": round((ram / fleet_max_ram) * 100) if fleet_max_ram else 0,
+            "fleet_max_cpu": fleet_max_cpu,
+            "fleet_max_ram": fleet_max_ram,
+        })
+    return jsonify(data)
+
+
 @app.route("/logs/<instance_slug>", methods=["GET"])
 @login_required
 def get_instance_logs(instance_slug: str):

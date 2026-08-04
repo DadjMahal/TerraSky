@@ -1,0 +1,127 @@
+/* ============================================================================
+   SkyDash Dashboard styles — Category 1 UI/UX (#4 region map, #5 filters,
+   #6 drag-drop, #7 CPU/RAM bars, #8 toasts, #9 context menu, #10 pagination)
+   Loaded from base.html via {{ url_for('static', filename='css/dashboard.css') }}
+   ============================================================================ */
+
+/* ---- #8 Toast stack ------------------------------------------------------ */
+#toast-stack {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1080;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-width: 340px;
+    pointer-events: none;
+}
+.skydash-toast {
+    pointer-events: auto;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    animation: toast-in 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+    font-size: 0.9rem;
+}
+.skydash-toast.hide-anim { animation: toast-out 0.4s ease forwards; }
+.skydash-toast .toast-progress {
+    height: 3px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.55);
+    transform-origin: left;
+    animation: toast-progress var(--toast-duration, 3.5s) linear forwards;
+}
+@keyframes toast-in {
+    from { opacity: 0; transform: translateX(120%); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toast-out {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(120%); }
+}
+@keyframes toast-progress {
+    from { transform: scaleX(1); }
+    to   { transform: scaleX(0); }
+}
+
+/* ---- #7 CPU/RAM progress bars ------------------------------------------- */
+.metric-bar { margin-bottom: 0.35rem; }
+.metric-bar .metric-label {
+    display: flex; justify-content: space-between;
+    font-size: 0.72rem; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.03em;
+}
+.metric-bar .progress { height: 0.45rem; background: rgba(127, 127, 127, 0.2); }
+.metric-bar .progress-bar { transition: width 0.8s ease; }
+
+/* ---- #4 Region map ------------------------------------------------------- */
+#region-map-wrap { overflow: hidden; border-radius: 1rem; }
+#region-map { height: 380px; width: 100%; background: #0a0a12; z-index: 0; }
+[data-theme="light"] #region-map { background: #dfe8f1; }
+#map-error { color: var(--text-secondary); }
+.region-marker { display: flex; align-items: center; justify-content: center; }
+
+/* ---- #5 Filter chip / tag multi-select ---------------------------------- */
+.tag-dropdown {
+    position: relative;
+    width: 100%;
+}
+.tag-dropdown .tag-drop-label {
+    width: 100%; text-align: left;
+    background: var(--bg-card); border: 1px solid rgba(127,127,127,0.3);
+    color: var(--text-primary); border-radius: 0.375rem;
+}
+.tag-drop-panel {
+    display: none;
+    position: absolute; top: 100%; left: 0; right: 0;
+    z-index: 1050; background: var(--bg-card); border: 1px solid rgba(127,127,127,0.3);
+    border-radius: 0.5rem; padding: 0.5rem; max-height: 220px; overflow: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+}
+.tag-drop-panel.open { display: block; }
+.tag-drop-panel .form-check { padding-left: 1.6rem; }
+.active-filter-count {
+    display: inline-block; min-width: 1.1rem; text-align: center;
+    background: #0d6efd; color: #fff; border-radius: 0.6rem; font-size: 0.7rem;
+    margin-left: 0.35rem;
+}
+
+/* ---- #6 Drag & drop ------------------------------------------------------ */
+.card-col.dragging { opacity: 0.5; transform: scale(0.98); }
+.card-col.drag-over { box-shadow: 0 0 0 2px #0d6efd inset; border-radius: 1rem; }
+#cards.sortable-active .card-col { cursor: grab; }
+#cards.sortable-active .card-col:active { cursor: grabbing; }
+
+/* ---- #9 Context menu ----------------------------------------------------- */
+#context-menu {
+    display: none; position: fixed; z-index: 2000; min-width: 180px;
+    background: var(--bg-card); color: var(--text-primary);
+    border: 1px solid rgba(127,127,127,0.35); border-radius: 0.6rem;
+    box-shadow: 0 12px 35px rgba(0,0,0,0.35); padding: 0.3rem;
+    animation: ctx-in 0.15s ease;
+}
+#context-menu.open { display: block; }
+#context-menu .ctx-head {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--text-secondary); padding: 0.35rem 0.6rem; border-bottom: 1px solid rgba(127,127,127,0.2);
+    margin-bottom: 0.2rem;
+}
+#context-menu button {
+    display: block; width: 100%; text-align: left; border: 0; background: transparent;
+    color: var(--text-primary); padding: 0.4rem 0.6rem; border-radius: 0.35rem; font-size: 0.86rem;
+}
+#context-menu button:hover { background: rgba(13, 110, 253, 0.15); }
+#context-menu button.danger { color: #dc3545; }
+#context-menu hr { margin: 0.25rem 0; border-color: rgba(127,127,127,0.2); }
+@keyframes ctx-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+/* ---- #10 Pagination / infinite scroll ----------------------------------- */
+#scroll-sentinel { height: 1px; }
+.pagination-controls { display: flex; justify-content: center; gap: 0.75rem; margin: 1rem 0; }
+.card-col.hidden { display: none !important; }
+.fade-in { animation: cardFadeIn 0.5s ease var(--delay, 0s) both; }
+@keyframes cardFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---- Map / filter toolbar buttons --------------------------------------- */
+.toolbar-btn { white-space: nowrap; }

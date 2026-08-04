@@ -22,13 +22,13 @@
 | 1 | Dashboard — adaptive design | ✅ done | Cline | base.html/index.html updated, deployed (2026-08-02) |
 | 2 | Dark/Light Mode Toggle | ✅ done | Cline | theme toggle in navbar; live on 74.248.232.219 |
 | 3 | CSS animations (hover/fade) | ✅ done | Cline | fade-in cards, hover gradient; deployed |
-| 4 | Interactive region map | ⬜ pending | | |
-| 5 | Enhanced tag filters | ⬜ pending | | |
-| 6 | Drag-and-drop reordering | ⬜ pending | | |
-| 7 | CPU/RAM load visualization | ⬜ pending | | |
-| 8 | Toast notifications w/ animation | ⬜ pending | | |
-| 9 | Quick Actions context menu | ⬜ pending | | |
-| 10 | Infinite scroll / pagination | ⬜ pending | | |
+| 4 | Interactive region map | ✅ done | Cline | Leaflet.js map w/ provider-coloured markers; toggle in navbar; `region-map.js` (2026-08-04) |
+| 5 | Enhanced tag filters | ✅ done | Cline | multi-select tag dropdown + type/region filters; `dashboard.js` (2026-08-04) |
+| 6 | Drag-and-drop reordering | ✅ done | Cline | Sortable.js reorder saved to localStorage; (2026-08-04) |
+| 7 | CPU/RAM load visualization | ✅ done | Cline | progress bars via new `/api/load` endpoint (fleet-relative); (2026-08-04) |
+| 8 | Toast notifications w/ animation | ✅ done | Cline | animated toast stack + auto-dismiss; `dashboard.js`/`dashboard.css` (2026-08-04) |
+| 9 | Quick Actions context menu | ✅ done | Cline | right-click menu (Start/Stop/Refresh/Details/Logs); `dashboard.js` (2026-08-04) |
+| 10 | Infinite scroll / pagination | ✅ done | Cline | IntersectionObserver infinite scroll + "Load more" button; (2026-08-04) |
 
 ## Category 2 — UI/UX Detail Pages (10)
 
@@ -167,5 +167,13 @@
 | 98 | Firewall rules history | ⬜ pending | | |
 | 99 | Compliance checking | ⬜ pending | | |
 | 100 | Breach detection + alerting | ⬜ pending | | |
+
+## 📥 Backlog (deferred / needs resources)
+
+> Items moved out of the active path. Re-prioritise when bandwidth allows.
+
+| Item | Origin | Reason deferred |
+|------|---------|------------------|
+| Set secure `SKYDASH_ADMIN_PASSWORD` (server venv `terraform/.env`) | STATUS.md next-step #2 | Skipped per user request 2026-08-04; security hardening, not feature work |
 
 
