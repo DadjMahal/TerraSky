@@ -73,7 +73,8 @@ jobs:
             # Start Flask app
             echo "=== Starting Flask app ==="
             nohup venv/bin/python app.py > flask.log 2>&1 &
-            echo "App started with PID $!"
+            FLASK_PID=$!
+            echo "App started with PID $FLASK_PID"
             
             # Wait for app to be ready
             sleep 5
@@ -87,14 +88,21 @@ jobs:
                 exit 1
             fi
             
+            # Test application directly on 8080
+            echo "=== Testing application on port 8080 ==="
+            curl -s -o /dev/null -w "HTTP %{http_code}\n" --connect-timeout 5 http://localhost:8080/login
+            
             # Health check with retries
             echo "=== Health check ==="
-            MAX_RETRIES=5
+            MAX_RETRIES=10
             for i in $(seq 1 $MAX_RETRIES); do
                 CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://localhost:8080/login 2>/dev/null || echo "000")
                 echo "Attempt $i: HTTP $CODE"
                 if [ "$CODE" = "200" ]; then
                     echo "✅ Deploy successful"
+                    # Show sample of deployed content
+                    echo "=== Deployed page head ==="
+                    curl -s http://localhost:8080/login | head -20
                     exit 0
                 fi
                 sleep 2
