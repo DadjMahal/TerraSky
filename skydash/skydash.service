@@ -1,0 +1,15 @@
+[Unit]
+Description=SkyDash Multi-Cloud Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=volodro
+WorkingDirectory=/home/volodro/skydash
+EnvironmentFile=/home/volodro/terraform/.env
+ExecStart=/home/volodro/skydash/venv/bin/python /home/volodro/skydash/app.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

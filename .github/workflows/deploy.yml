@@ -55,54 +55,51 @@ jobs:
             set -e
             cd /home/volodro/skydash
             
-            # Kill existing Flask process
+            echo "=== Stopping existing Flask process ==="
             pkill -f "[a]pp.py" 2>/dev/null || true
             sleep 2
             
-            # Load environment variables
+            echo "=== Loading environment variables ==="
             set -a
             source /home/volodro/terraform/.env
             set +a
             
-            # Verify Python environment
             echo "=== Verifying Python environment ==="
             venv/bin/python --version
+            
             echo "=== Testing Flask import ==="
             venv/bin/python -c "from app import app; print('Flask app imports OK')"
             
-            # Start Flask app
-            echo "=== Starting Flask app ==="
+            echo "=== Starting Flask app on port 8080 ==="
             nohup venv/bin/python app.py > flask.log 2>&1 &
             FLASK_PID=$!
             echo "App started with PID $FLASK_PID"
             
-            # Wait for app to be ready
             sleep 5
             
-            # Check if process is running
+            echo "=== Checking if Flask process is running ==="
             if pgrep -f "[a]pp.py" > /dev/null; then
                 echo "✅ Flask process is running"
+                ps aux | grep "[a]pp.py"
             else
                 echo "❌ Flask process not found"
                 cat flask.log
                 exit 1
             fi
             
-            # Test application directly on 8080
-            echo "=== Testing application on port 8080 ==="
-            curl -s -o /dev/null -w "HTTP %{http_code}\n" --connect-timeout 5 http://localhost:8080/login
+            echo "=== Waiting for server to be ready ==="
+            sleep 3
             
-            # Health check with retries
-            echo "=== Health check ==="
+            # Health check with retries on port 8080
+            echo "=== Health check on port 8080 ==="
             MAX_RETRIES=10
             for i in $(seq 1 $MAX_RETRIES); do
                 CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://localhost:8080/login 2>/dev/null || echo "000")
                 echo "Attempt $i: HTTP $CODE"
                 if [ "$CODE" = "200" ]; then
                     echo "✅ Deploy successful"
-                    # Show sample of deployed content
-                    echo "=== Deployed page head ==="
-                    curl -s http://localhost:8080/login | head -20
+                    echo "=== Deployed page sample ==="
+                    curl -s http://localhost:8080/login | grep -o '<title>.*</title>'
                     exit 0
                 fi
                 sleep 2
@@ -111,4 +108,6 @@ jobs:
             echo "❌ Health check failed after $MAX_RETRIES attempts"
             echo "=== Flask log ==="
             cat flask.log
+            echo "=== Check if port 8080 is in use ==="
+            netstat -tlnp 2>/dev/null | grep 8080 || ss -tlnp | grep 8080 || echo "Port 8080 not listening"
             exit 1
