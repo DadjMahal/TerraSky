@@ -95,7 +95,8 @@ jobs:
             cd /home/volodro/skydash
 
             echo "=== Stopping existing Flask process ==="
-            pkill -f "app.py" 2>/dev/null || true
+            # [a]pp.py bracket trick so pkill doesn't kill its own command line
+            pkill -f "[a]pp.py" 2>/dev/null || true
             sleep 2
 
             echo "=== Loading environment variables ==="
@@ -109,45 +110,10 @@ jobs:
             echo "=== Testing Flask import ==="
             venv/bin/python -c "from app import app; print(\"Flask app imports OK\")"
 
-            echo "=== Starting Flask app detached on port 8080 ==="
-            # Detach fully so the SSH session can return (setsid + fd redirects + disown)
-            setsid nohup venv/bin/python app.py > flask.log 2>&1 < /dev/null &
-            disown || true
-            echo "launched; giving it 8 seconds to boot..."
-
-            sleep 8
-
-            echo "=== Checking if Flask process is running ==="
-            if pgrep -f "app.py" > /dev/null; then
-                echo "✅ Flask process is running"
-                pgrep -af "app.py" | grep -v pgrep | head -5
-            else
-                echo "❌ Flask process not found"
-                tail -40 flask.log
-                exit 1
-            fi
-
-            echo "=== Health check on port 8080 (Flask) ==="
-            curl -s -o /dev/null -w "Flask 8080: HTTP %{http_code}\n" --connect-timeout 5 http://localhost:8080/login || echo "8080 fail"
-
-            echo "=== Health check on port 80 (via nginx) ==="
-            for i in $(seq 1 5); do
-                CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://localhost/login 2>/dev/null || echo "000")
-                TITLE=$(curl -s http://localhost/login 2>/dev/null | grep -o "<title>[^<]*</title>" | head -1)
-                echo "Attempt $i: HTTP $CODE | Title: ${TITLE:-n/a}"
-                if [ "$CODE" = "200" ] && echo "$TITLE" | grep -qi "skydash"; then
-                    echo "✅ Deploy successful — SkyDash served on port 80"
-                    exit 0
-                fi
-                sleep 2
-            done
-
-            echo "❌ nginx health check failed"
-            echo "=== Flask log ==="
-            tail -40 flask.log
-            echo "=== nginx status ==="
-            systemctl status nginx --no-pager 2>/dev/null | head -10 || true
-            exit 1
+            echo "=== Starting Flask via start_skydash.sh (detached) ==="
+            # Use the proven detached startup script rather than inline backgrounding,
+            # which keeps the SSH session's stdout open and hangs the step.
+            bash /home/volodro/start_skydash.sh
           '
 
 
