@@ -92,28 +92,46 @@ jobs:
           set -e
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no volodro@${{ secrets.SERVER_IP }} '
             set -e
-            cd /home/volodro/skydash
+            echo "=== Verify / Install systemd unit for SkyDash ==="
+            sudo cp /home/volodro/skydash/skydash.service /etc/systemd/system/skydash.service
+            sudo systemctl daemon-reload
 
-            echo "=== Stopping existing Flask process ==="
-            # [a]pp.py bracket trick so pkill doesn't kill its own command line
-            pkill -f "[a]pp.py" 2>/dev/null || true
-            sleep 2
+            echo "=== Enable + restart via systemd (robust, no background hang) ==="
+            sudo systemctl enable skydash.service 2>/dev/null || true
+            sudo systemctl restart skydash.service
+            # Wait for boot
+            sleep 6
 
-            echo "=== Loading environment variables ==="
-            set -a
-            source /home/volodro/terraform/.env
-            set +a
+            echo "=== Service status ==="
+            SVC=$(sudo systemctl is-active skydash.service)
+            echo "skydash.service: $SVC"
+            if [ "$SVC" != "active" ]; then
+                echo "❌ service not active — showing journal:"
+                sudo journalctl -u skydash.service --no-pager -n 40 || true
+                exit 1
+            fi
 
-            echo "=== Verifying Python environment ==="
-            venv/bin/python --version
+            echo "=== Health check on port 8080 (Flask) ==="
+            curl -s -o /dev/null -w "Flask 8080: HTTP %{http_code}\n" --connect-timeout 5 http://localhost:8080/login || echo "8080 fail"
 
-            echo "=== Testing Flask import ==="
-            venv/bin/python -c "from app import app; print(\"Flask app imports OK\")"
+            echo "=== Health check on port 80 (via nginx) ==="
+            for i in $(seq 1 10); do
+                CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://localhost/login 2>/dev/null || echo "000")
+                TITLE=$(curl -s http://localhost/login 2>/dev/null | grep -o "<title>[^<]*</title>" | head -1)
+                echo "Attempt $i: HTTP $CODE | Title: ${TITLE:-n/a}"
+                if [ "$CODE" = "200" ] && echo "$TITLE" | grep -qi "skydash"; then
+                    echo "✅ Deploy successful — SkyDash served on port 80"
+                    exit 0
+                fi
+                sleep 2
+            done
 
-            echo "=== Starting Flask via start_skydash.sh (detached) ==="
-            # Use the proven detached startup script rather than inline backgrounding,
-            # which keeps the SSH session's stdout open and hangs the step.
-            bash /home/volodro/start_skydash.sh
+            echo "❌ nginx health check failed"
+            echo "=== journal ==="
+            sudo journalctl -u skydash.service --no-pager -n 30 || true
+            echo "=== nginx status ==="
+            systemctl status nginx --no-pager 2>/dev/null | head -10 || true
+            exit 1
           '
 
 
