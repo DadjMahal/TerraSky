@@ -66,12 +66,28 @@ jobs:
             sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
             sudo cp /home/volodro/deploy/nginx/skydash.conf /etc/nginx/sites-available/skydash.conf
             sudo ln -sf /etc/nginx/sites-available/skydash.conf /etc/nginx/sites-enabled/skydash.conf
-            # Remove the default welcome page site that shadows ours
-            sudo rm -f /etc/nginx/sites-enabled/default
 
-            # Validate and reload
-            sudo nginx -t && sudo systemctl reload nginx || sudo service nginx reload
+            # Remove ALL default/welcome server blocks that could shadow ours.
+            # Ubuntu nginx may keep the default in sites-enabled/default OR conf.d/default.conf.
+            sudo rm -f /etc/nginx/sites-enabled/default || true
+            sudo rm -f /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default || true
+            sudo rm -f /etc/nginx/sites-enabled/000-default || true
+
+            # Show what will actually be served
+            echo "=== Listens on port 80 ==="
+            sudo grep -r "listen" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null || true
+
+            # Validate config
+            sudo nginx -t 2>&1 || (echo "nginx -t failed"; sudo nginx -T 2>&1 | head -40; exit 1)
+
+            # Reload (try both methods)
+            (sudo systemctl reload nginx 2>/dev/null || sudo service nginx reload 2>/dev/null || echo "reload via systemd/service failed") || true
+
+            echo "=== nginx -T (port 80 server blocks) ==="
+            sudo nginx -T 2>/dev/null | grep -B1 -A6 "listen 80" | head -60 || true
             echo "✅ nginx configured: port 80 -> Flask 8080"
+
+
 
       - name: Deploy and restart SkyDash
         uses: webfactory/ssh-agent@v0.5.1
@@ -140,3 +156,24 @@ jobs:
             echo "=== nginx status ==="
             systemctl status nginx --no-pager 2>/dev/null | head -15 || true
             exit 1
+
+      - name: External public health check (same as browser)
+        run: |
+          set -e
+          echo "=== External check from GitHub runner (public network) ==="
+          echo "This mirrors what a browser at https://${{ secrets.SERVER_IP }}/ sees."
+          RESP=$(curl -s -o /tmp/ext_body.txt -w "%{http_code}" --connect-timeout 10 \
+                "http://${{ secrets.SERVER_IP }}/login" 2>/dev/null || echo "000")
+          echo "HTTP code: $RESP"
+          echo "--- Response body (first 60 lines) ---"
+          head -60 /tmp/ext_body.txt 2>/dev/null || echo "(empty body)"
+          if echo "$RESP" | grep -q "200" && grep -qi "skydash" /tmp/ext_body.txt; then
+            echo "✅ PUBLIC site serves SkyDash"
+          elif echo "$RESP" | grep -q "200" && grep -qi "welcome to nginx\|welcome to" /tmp/ext_body.txt; then
+            echo "⚠️ PUBLIC site still shows nginx default page — front proxy/CDN is serving it, not our server"
+            echo "   → Must purge CDN cache or fix front proxy config. Check Failure for details."
+            exit 1
+          else
+            echo "⚠️ PUBLIC response does not match expected. Inspect response above."
+            exit 1
+          fi
