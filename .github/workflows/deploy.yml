@@ -43,9 +43,34 @@ jobs:
           rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
             terraform/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/terraform/ \
             --exclude=".terraform/" --exclude=".env"
+          # Sync nginx reverse-proxy config (routes port 80 -> Flask 8080)
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
+            deploy/nginx/skydash.conf volodro@${{ secrets.SERVER_IP }}:/home/volodro/deploy/nginx/skydash.conf
           rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
             ~/.ssh/skydash_hermes volodro@${{ secrets.SERVER_IP }}:/home/volodro/.ssh/ 2>/dev/null || true
           echo "Files synced"
+
+      - name: Configure nginx reverse proxy
+        uses: webfactory/ssh-agent@v0.5.1
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            echo "=== Installing/updating nginx reverse proxy config ==="
+            # Ensure nginx is installed
+            sudo apt-get update -y >/dev/null 2>&1 || true
+            sudo apt-get install -y nginx >/dev/null 2>&1 || (echo "nginx install skipped/failed"; true)
+
+            # Install SkyDash site config
+            sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+            sudo cp /home/volodro/deploy/nginx/skydash.conf /etc/nginx/sites-available/skydash.conf
+            sudo ln -sf /etc/nginx/sites-available/skydash.conf /etc/nginx/sites-enabled/skydash.conf
+            # Remove the default welcome page site that shadows ours
+            sudo rm -f /etc/nginx/sites-enabled/default
+
+            # Validate and reload
+            sudo nginx -t && sudo systemctl reload nginx || sudo service nginx reload
+            echo "✅ nginx configured: port 80 -> Flask 8080"
 
       - name: Deploy and restart SkyDash
         uses: webfactory/ssh-agent@v0.5.1
@@ -90,24 +115,27 @@ jobs:
             echo "=== Waiting for server to be ready ==="
             sleep 3
             
-            # Health check with retries on port 8080
-            echo "=== Health check on port 8080 ==="
+            # Health check with retries on PUBLIC port 80 (through nginx reverse proxy)
+            echo "=== Health check on public port 80 ==="
             MAX_RETRIES=10
             for i in $(seq 1 $MAX_RETRIES); do
-                CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://localhost:8080/login 2>/dev/null || echo "000")
+                CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://localhost/ 2>/dev/null || echo "000")
                 echo "Attempt $i: HTTP $CODE"
-                if [ "$CODE" = "200" ]; then
-                    echo "✅ Deploy successful"
-                    echo "=== Deployed page sample ==="
-                    curl -s http://localhost:8080/login | grep -o '<title>.*</title>'
+                # Verify we get SkyDash, not the nginx default "Welcome to nginx!" page
+                TITLE=$(curl -s http://localhost/login 2>/dev/null | grep -o '<title>[^<]*</title>' | head -1)
+                echo "  Title probe: ${TITLE:-n/a}"
+                if [ "$CODE" = "200" ] && echo "$TITLE" | grep -qi "skydash"; then
+                    echo "✅ Deploy successful — SkyDash served on port 80"
                     exit 0
                 fi
                 sleep 2
             done
-            
+
             echo "❌ Health check failed after $MAX_RETRIES attempts"
             echo "=== Flask log ==="
             cat flask.log
-            echo "=== Check if port 8080 is in use ==="
-            netstat -tlnp 2>/dev/null | grep 8080 || ss -tlnp | grep 8080 || echo "Port 8080 not listening"
+            echo "=== Check listening ports ==="
+            ss -tlnp 2>/dev/null | grep -E ':80|:8080' || echo "Ports 80/8080 not listening"
+            echo "=== nginx status ==="
+            systemctl status nginx --no-pager 2>/dev/null | head -15 || true
             exit 1

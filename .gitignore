@@ -10,6 +10,7 @@
 !.github/**
 !terraform/
 !skydash/
+!deploy/
 !Documentation/
 !DOCUMENTATION_REVIEW.md
 
