@@ -52,15 +52,14 @@ jobs:
           echo "Files synced"
 
       - name: Configure nginx reverse proxy
-        uses: webfactory/ssh-agent@v0.5.1
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
+        run: |
+          set -e
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no volodro@${{ secrets.SERVER_IP }} '
             set -e
             echo "=== Installing/updating nginx reverse proxy config ==="
             # Ensure nginx is installed
             sudo apt-get update -y >/dev/null 2>&1 || true
-            sudo apt-get install -y nginx >/dev/null 2>&1 || (echo "nginx install skipped/failed"; true)
+            sudo apt-get install -y nginx >/dev/null 2>&1 || true
 
             # Install SkyDash site config
             sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
@@ -68,57 +67,55 @@ jobs:
             sudo ln -sf /etc/nginx/sites-available/skydash.conf /etc/nginx/sites-enabled/skydash.conf
 
             # Remove ALL default/welcome server blocks that could shadow ours.
-            # Ubuntu nginx may keep the default in sites-enabled/default OR conf.d/default.conf.
             sudo rm -f /etc/nginx/sites-enabled/default || true
             sudo rm -f /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default || true
             sudo rm -f /etc/nginx/sites-enabled/000-default || true
 
-            # Show what will actually be served
             echo "=== Listens on port 80 ==="
             sudo grep -r "listen" /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null || true
 
-            # Validate config
+            # Validate config (fail loudly if broken)
             sudo nginx -t 2>&1 || (echo "nginx -t failed"; sudo nginx -T 2>&1 | head -40; exit 1)
 
             # Reload (try both methods)
-            (sudo systemctl reload nginx 2>/dev/null || sudo service nginx reload 2>/dev/null || echo "reload via systemd/service failed") || true
+            (sudo systemctl reload nginx 2>/dev/null || sudo service nginx reload 2>/dev/null || echo "reload failed") || true
 
             echo "=== nginx -T (port 80 server blocks) ==="
             sudo nginx -T 2>/dev/null | grep -B1 -A6 "listen 80" | head -60 || true
             echo "✅ nginx configured: port 80 -> Flask 8080"
+          '
 
 
 
       - name: Deploy and restart SkyDash
-        uses: webfactory/ssh-agent@v0.5.1
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
+        run: |
+          set -e
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no volodro@${{ secrets.SERVER_IP }} '
             set -e
             cd /home/volodro/skydash
-            
+
             echo "=== Stopping existing Flask process ==="
             pkill -f "[a]pp.py" 2>/dev/null || true
             sleep 2
-            
+
             echo "=== Loading environment variables ==="
             set -a
             source /home/volodro/terraform/.env
             set +a
-            
+
             echo "=== Verifying Python environment ==="
             venv/bin/python --version
-            
+
             echo "=== Testing Flask import ==="
-            venv/bin/python -c "from app import app; print('Flask app imports OK')"
-            
+            venv/bin/python -c "from app import app; print(\"Flask app imports OK\")"
+
             echo "=== Starting Flask app on port 8080 ==="
             nohup venv/bin/python app.py > flask.log 2>&1 &
             FLASK_PID=$!
             echo "App started with PID $FLASK_PID"
-            
+
             sleep 5
-            
+
             echo "=== Checking if Flask process is running ==="
             if pgrep -f "[a]pp.py" > /dev/null; then
                 echo "✅ Flask process is running"
@@ -128,19 +125,17 @@ jobs:
                 cat flask.log
                 exit 1
             fi
-            
+
             echo "=== Waiting for server to be ready ==="
             sleep 3
-            
+
             # Health check with retries on PUBLIC port 80 (through nginx reverse proxy)
-            echo "=== Health check on public port 80 ==="
+            echo "=== Health check on public port 80 (on server) ==="
             MAX_RETRIES=10
             for i in $(seq 1 $MAX_RETRIES); do
                 CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://localhost/ 2>/dev/null || echo "000")
-                echo "Attempt $i: HTTP $CODE"
-                # Verify we get SkyDash, not the nginx default "Welcome to nginx!" page
-                TITLE=$(curl -s http://localhost/login 2>/dev/null | grep -o '<title>[^<]*</title>' | head -1)
-                echo "  Title probe: ${TITLE:-n/a}"
+                TITLE=$(curl -s http://localhost/login 2>/dev/null | grep -o "<title>[^<]*</title>" | head -1)
+                echo "Attempt $i: HTTP $CODE | Title: ${TITLE:-n/a}"
                 if [ "$CODE" = "200" ] && echo "$TITLE" | grep -qi "skydash"; then
                     echo "✅ Deploy successful — SkyDash served on port 80"
                     exit 0
@@ -152,10 +147,12 @@ jobs:
             echo "=== Flask log ==="
             cat flask.log
             echo "=== Check listening ports ==="
-            ss -tlnp 2>/dev/null | grep -E ':80|:8080' || echo "Ports 80/8080 not listening"
+            ss -tlnp 2>/dev/null | grep -E ":80|:8080" || echo "Ports 80/8080 not listening"
             echo "=== nginx status ==="
             systemctl status nginx --no-pager 2>/dev/null | head -15 || true
             exit 1
+          '
+
 
       - name: External public health check (same as browser)
         run: |
