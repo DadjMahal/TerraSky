@@ -95,7 +95,7 @@ jobs:
             cd /home/volodro/skydash
 
             echo "=== Stopping existing Flask process ==="
-            pkill -f "[a]pp.py" 2>/dev/null || true
+            pkill -f "app.py" 2>/dev/null || true
             sleep 2
 
             echo "=== Loading environment variables ==="
@@ -109,31 +109,30 @@ jobs:
             echo "=== Testing Flask import ==="
             venv/bin/python -c "from app import app; print(\"Flask app imports OK\")"
 
-            echo "=== Starting Flask app on port 8080 ==="
-            nohup venv/bin/python app.py > flask.log 2>&1 &
-            FLASK_PID=$!
-            echo "App started with PID $FLASK_PID"
+            echo "=== Starting Flask app detached on port 8080 ==="
+            # Detach fully so the SSH session can return (setsid + fd redirects + disown)
+            setsid nohup venv/bin/python app.py > flask.log 2>&1 < /dev/null &
+            disown || true
+            echo "launched; giving it 8 seconds to boot..."
 
-            sleep 5
+            sleep 8
 
             echo "=== Checking if Flask process is running ==="
-            if pgrep -f "[a]pp.py" > /dev/null; then
+            if pgrep -f "app.py" > /dev/null; then
                 echo "✅ Flask process is running"
-                ps aux | grep "[a]pp.py"
+                pgrep -af "app.py" | grep -v pgrep | head -5
             else
                 echo "❌ Flask process not found"
-                cat flask.log
+                tail -40 flask.log
                 exit 1
             fi
 
-            echo "=== Waiting for server to be ready ==="
-            sleep 3
+            echo "=== Health check on port 8080 (Flask) ==="
+            curl -s -o /dev/null -w "Flask 8080: HTTP %{http_code}\n" --connect-timeout 5 http://localhost:8080/login || echo "8080 fail"
 
-            # Health check with retries on PUBLIC port 80 (through nginx reverse proxy)
-            echo "=== Health check on public port 80 (on server) ==="
-            MAX_RETRIES=10
-            for i in $(seq 1 $MAX_RETRIES); do
-                CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://localhost/ 2>/dev/null || echo "000")
+            echo "=== Health check on port 80 (via nginx) ==="
+            for i in $(seq 1 5); do
+                CODE=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 3 http://localhost/login 2>/dev/null || echo "000")
                 TITLE=$(curl -s http://localhost/login 2>/dev/null | grep -o "<title>[^<]*</title>" | head -1)
                 echo "Attempt $i: HTTP $CODE | Title: ${TITLE:-n/a}"
                 if [ "$CODE" = "200" ] && echo "$TITLE" | grep -qi "skydash"; then
@@ -143,15 +142,14 @@ jobs:
                 sleep 2
             done
 
-            echo "❌ Health check failed after $MAX_RETRIES attempts"
+            echo "❌ nginx health check failed"
             echo "=== Flask log ==="
-            cat flask.log
-            echo "=== Check listening ports ==="
-            ss -tlnp 2>/dev/null | grep -E ":80|:8080" || echo "Ports 80/8080 not listening"
+            tail -40 flask.log
             echo "=== nginx status ==="
-            systemctl status nginx --no-pager 2>/dev/null | head -15 || true
+            systemctl status nginx --no-pager 2>/dev/null | head -10 || true
             exit 1
           '
+
 
 
       - name: External public health check (same as browser)
