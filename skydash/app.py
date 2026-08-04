@@ -20,6 +20,7 @@ from state_reader import get_instance_by_slug, get_instances
 from auth import auth_bp, init_auth, login_required, get_current_user
 import hermes_agent
 import config_store
+import status_history
 
 
 def _apply_overrides(inst_dict: dict) -> dict:
@@ -40,6 +41,18 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = "skydash-dev-secret-change-me"
 init_auth(app)
+
+# --- Real-time SSH terminal (Category 2 #16) -------------------------------
+# Flask-SocketIO wraps the app so xterm.js can talk to a live paramiko channel.
+# Imported lazily so the rest of the app still works if the dep is absent.
+try:
+    from flask_socketio import SocketIO, disconnect
+    socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*")
+    import ssh_bridge
+    _SOCKETIO_OK = True
+except Exception as e:  # noqa: BLE001
+    socketio = None
+    _SOCKETIO_OK = False
 
 # Inject site settings and current_user into ALL templates automatically
 @app.context_processor
@@ -91,6 +104,7 @@ def _live_status(instance) -> dict:
     else:
         data["error"] = "Provider SDK/credentials not available"
     _cache_put(instance.slug, data)
+    status_history.record(instance.slug, data["status"])
     return data
 
 
@@ -171,6 +185,79 @@ def api_load():
             "fleet_max_ram": fleet_max_ram,
         })
     return jsonify(data)
+
+
+@app.route("/api/status-history/<slug>")
+@login_required
+def api_status_history(slug: str):
+    """Chronological status transitions for the instance timeline (#15)."""
+    if not get_instance_by_slug(slug):
+        return jsonify({"error": "not found"}), 404
+    return jsonify(status_history.get_history(slug))
+
+
+@app.route("/api/metrics/<slug>")
+@login_required
+def api_metrics(slug: str):
+    """Per-instance metrics for the detail charts (#18).
+
+    Returns configured CPU/RAM/disk specs (from inventory) plus, for the Hermes
+    instance, live disk usage pulled via the SSH agent. Live CPU/RAM timeseries
+    requires the monitoring agent (Category 7) — not yet available.
+    """
+    inst = get_instance_by_slug(slug)
+    if not inst:
+        return jsonify({"error": "not found"}), 404
+
+    def _num(value):
+        import re
+        m = re.search(r"(\d+(?:\.\d+)?)", str(value))
+        return float(m.group(1)) if m else 0.0
+
+    payload = {
+        "slug": inst.slug,
+        "cpu_vcpus": _num(inst.cpu),
+        "ram_gb": _num(inst.ram),
+        "disk_gb": _num(inst.disk_size),
+        "status": inst.status,
+    }
+    # Enrich Hermes with live disk usage (already SSH-capable).
+    if inst.provider == "aws" and "hermes" in inst.name.lower():
+        try:
+            provider = get_provider(inst.provider)
+            if provider:
+                provider.get_instance_details(inst)
+            if inst.public_ip:
+                disk = hermes_agent.fetch_disk_status(inst.public_ip)
+                payload["disk"] = disk.get("data", disk) if isinstance(disk, dict) else {}
+        except Exception as e:
+            payload["disk_error"] = str(e)
+    return jsonify(payload)
+
+
+@app.route("/api/domains", methods=["GET", "POST", "DELETE"])
+@login_required
+def api_domains():
+    """Custom domain→instance mapping UI backend (#19).
+
+    GET    -> list mappings;  POST {domain, slug} -> add;  DELETE ?domain= -> remove.
+    """
+    if request.method == "GET":
+        return jsonify(config_store.get_domain_mappings())
+    if request.method == "POST":
+        data = request.get_json(silent=True) or request.form
+        domain = (data.get("domain") or "").strip()
+        slug = (data.get("slug") or "").strip()
+        if not domain or not slug or not get_instance_by_slug(slug):
+            return jsonify({"ok": False, "error": "Invalid domain or slug"}), 400
+        entry = config_store.add_domain_mapping(domain, slug)
+        return jsonify({"ok": True, "mapping": entry})
+    # DELETE
+    domain = (request.args.get("domain") or "").strip()
+    if not domain:
+        return jsonify({"ok": False, "error": "domain required"}), 400
+    config_store.remove_domain_mapping(domain)
+    return jsonify({"ok": True})
 
 
 @app.route("/logs/<instance_slug>", methods=["GET"])
@@ -261,7 +348,58 @@ def instance_detail(slug: str):
     provider = get_provider(inst.provider)
     if provider:
         provider.get_instance_details(inst)  # enrich with live status
-    return render_template("detail.html", inst=inst.to_dict())
+    return render_template("detail.html", inst=inst.to_dict(), socketio_available=_SOCKETIO_OK)
+
+
+@socketio.on("connect", namespace="/ssh") if _SOCKETIO_OK else lambda *a, **k: None
+def _ssh_connect(auth=None):  # pragma: no cover - realtime handler
+    # Auth: require the same logged-in session cookie presence (best-effort).
+    from flask import session
+    if not session.get("user"):
+        return False
+
+
+@socketio.on("ssh_open", namespace="/ssh") if _SOCKETIO_OK else lambda *a, **k: None
+def _ssh_open(payload):  # pragma: no cover - realtime handler
+    from flask import request
+    slug = (payload or {}).get("slug", "")
+    inst = get_instance_by_slug(slug)
+    if not inst:
+        socketio.emit("ssh_status", {"ok": False, "error": "Instance not found"},
+                      to=request.sid, namespace="/ssh")
+        return
+    if inst.provider != "aws" or "hermes" not in inst.name.lower():
+        socketio.emit("ssh_status", {"ok": False, "error": "SSH terminal only available for the Hermes instance"},
+                      to=request.sid, namespace="/ssh")
+        return
+    provider = get_provider(inst.provider)
+    if provider:
+        provider.get_instance_details(inst)
+    host = inst.public_ip
+    if not host:
+        socketio.emit("ssh_status", {"ok": False, "error": "No public IP"},
+                      to=request.sid, namespace="/ssh")
+        return
+    ssh_bridge.open_session(request.sid, host, socketio, "/ssh")
+
+
+@socketio.on("ssh_input", namespace="/ssh") if _SOCKETIO_OK else lambda *a, **k: None
+def _ssh_input(payload):  # pragma: no cover - realtime handler
+    from flask import request
+    ssh_bridge.send_input(request.sid, (payload or {}).get("data", ""))
+
+
+@socketio.on("ssh_resize", namespace="/ssh") if _SOCKETIO_OK else lambda *a, **k: None
+def _ssh_resize(payload):  # pragma: no cover - realtime handler
+    from flask import request
+    p = payload or {}
+    ssh_bridge.resize(request.sid, int(p.get("cols", 80)), int(p.get("rows", 24)))
+
+
+@socketio.on("disconnect", namespace="/ssh") if _SOCKETIO_OK else lambda *a, **k: None
+def _ssh_disconnect():  # pragma: no cover - realtime handler
+    from flask import request
+    ssh_bridge.close_session(request.sid)
 
 
 @app.route("/instance/<slug>/<action>", methods=["POST"])
@@ -544,4 +682,7 @@ def refresh():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080, debug=False)
+    if _SOCKETIO_OK:
+        socketio.run(app, host="0.0.0.0", port=8080, debug=False, allow_unsafe_werkzeug=True)
+    else:
+        app.run(host="0.0.0.0", port=8080, debug=False)

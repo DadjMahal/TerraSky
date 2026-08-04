@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}🖥️ {{ inst.name }} | {{ site_name }}{% endblock %}
 {% block nav_actions %}
-            <a href="/" class="btn btn-outline-light btn-sm">⬅️ Back to Overview</a>
+            <a href="/" class="btn btn-outline-light btn-sm">⬅️ Back to Dashboard</a>
 {% endblock %}
 {% block content %}
 <div class="content-card p-4 mb-3">
@@ -11,514 +11,142 @@
         <span class="badge bg-secondary status-badge" id="status-badge" data-status="{{ inst.status }}">⏳ Loading...</span>
     </div>
 
-    <div class="row g-3">
-        <div class="col-md-6">
-            <div class="content-card mb-3 p-3">
-                <div class="fw-semibold mb-2">📋 Overview</div>
-                <div class="row g-2 small">
-                    <div class="col-6"><div class="kv-label">Name</div><div class="kv-value">{{ inst.name }}</div></div>
-                    <div class="col-6"><div class="kv-label">Display name</div><div class="kv-value">{{ inst.display_name or '—' }}</div></div>
-                    <div class="col-6"><div class="kv-label">Provider</div><div class="kv-value">{{ inst.provider_label }}</div></div>
-                    <div class="col-6"><div class="kv-label">🌍 Region</div><div class="kv-value">{{ inst.region or '—' }}</div></div>
-                    <div class="col-6"><div class="kv-label">📍 Zone</div><div class="kv-value">{{ inst.availability_zone or '—' }}</div></div>
-                    <div class="col-6"><div class="kv-label">🚦 Status</div><div class="kv-value">{{ inst.status }}</div></div>
-                    <div class="col-6"><div class="kv-label">🌐 Public IP</div><div class="kv-value"><code data-ip="public">{{ inst.public_ip or '—' }}</code></div></div>
-                    <div class="col-6"><div class="kv-label">🔒 Private IP</div><div class="kv-value"><code data-ip="private">{{ inst.private_ip or '—' }}</code></div></div>
-                    <div class="col-12"><div class="kv-label">📅 Created</div><div class="kv-value">{{ inst.creation_date or '—' }}</div></div>
-                </div>
-            </div>
-            <div class="content-card p-3">
-                <div class="fw-semibold mb-2">🌐 Network</div>
-                <div class="row g-2 small">
-                    <div class="col-6"><div class="kv-label">🌐 Public IP</div><div class="kv-value"><code data-ip="public">{{ inst.public_ip or '—' }}</code></div></div>
-                    <div class="col-6"><div class="kv-label">🔒 Private IP</div><div class="kv-value"><code data-ip="private">{{ inst.private_ip or '—' }}</code></div></div>
-                    <div class="col-6"><div class="kv-label">DNS (public)</div><div class="kv-value">{{ inst.public_dns or '—' }}</div></div>
-                    <div class="col-6"><div class="kv-label">DNS (private)</div><div class="kv-value">{{ inst.private_dns or '—' }}</div></div>
-                    <div class="col-12 text-muted small">🔒 Security groups: <em>future</em></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="content-card mb-3 p-3">
-                <div class="fw-semibold mb-2">💻 Hardware</div>
-                <div class="row g-2 small">
-                    <div class="col-6"><div class="kv-label">🖥️ Instance type</div><div class="kv-value">{{ inst.instance_type or '—' }}</div></div>
-                    <div class="col-6"><div class="kv-label">💻 OS</div><div class="kv-value">{{ inst.os or '—' }}</div></div>
-                    <div class="col-6"><div class="kv-label">⚙️ CPU</div><div class="kv-value">{{ inst.cpu or '—' }}</div></div>
-                    <div class="col-6"><div class="kv-label">💾 RAM</div><div class="kv-value">{{ inst.ram or '—' }}</div></div>
-                    <div class="col-6"><div class="kv-label">💽 Disk</div><div class="kv-value">{{ inst.disk_size or '—' }}</div></div>
-                    <div class="col-6"><div class="kv-label">🏗️ Architecture</div><div class="kv-value text-muted">N/A</div></div>
-                </div>
-            </div>
-            <div class="content-card p-3">
-                <div class="fw-semibold mb-2">⚙️ Actions</div>
-                <div class="btn-group mb-2" id="action-group">
-                    <button class="btn btn-success" data-action="start" {% if not inst.can_manage %}disabled{% endif %}>🚀 Start</button>
-                    <button class="btn btn-danger" data-action="stop" {% if not inst.can_manage %}disabled{% endif %}>⛔ Stop</button>
-                    <button class="btn btn-outline-secondary" data-action="refresh">🔄 Refresh</button>
-                </div>
-                <div class="small text-muted">🆔 Instance ID: <code>{{ inst.instance_id }}</code><br>📝 Terraform: <code>{{ inst.address }}</code></div>
-                {% if inst.tags %}<div class="mt-2"><span class="kv-label">🏷️ Tags</span><br>{% for k, v in inst.tags.items() %}<span class="badge bg-light text-dark border me-1">{{ k }}: {{ v }}</span>{% endfor %}</div>{% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-{% if "hermes" in inst.slug %}
-<div class="card shadow-sm mt-3 border-primary" id="hermes-agent-card">
-    <div class="card-header bg-primary text-white fw-semibold d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-robot"></i> Hermes Agent</span>
-        <button class="btn btn-sm btn-outline-light" id="test-connection-btn" onclick="testHermesConnection()">
-            <i class="bi bi-plug"></i> Test Connection
-        </button>
-    </div>
-    <div class="card-body">
-        <!-- Connection status indicator -->
-        <div id="hermes-status" class="alert alert-secondary py-1 mb-2 small" style="display:none;"></div>
-        
-        <!-- Log retrieval buttons -->
-        <div class="row g-2 mb-2">
-            <div class="col-6 col-md-3">
-                <button class="btn btn-outline-info btn-sm w-100" onclick="fetchHermesLogs('gateway')">
-                    <i class="bi bi-hdd-stack"></i> Gateway Logs
-                </button>
-            </div>
-            <div class="col-6 col-md-3">
-                <button class="btn btn-outline-warning btn-sm w-100" onclick="fetchHermesLogs('signal')">
-                    <i class="bi bi-chat-dots"></i> Signal Logs
-                </button>
-            </div>
-            <div class="col-6 col-md-3">
-                <button class="btn btn-outline-danger btn-sm w-100" onclick="fetchHermesLogs('commands')">
-                    <i class="bi bi-terminal"></i> Command Logs
-                </button>
-            </div>
-            <div class="col-6 col-md-3">
-                <button class="btn btn-outline-secondary btn-sm w-100" onclick="fetchHermesLogs('all')">
-                    <i class="bi bi-collection"></i> All Logs
-                </button>
-            </div>
-        </div>
-        
-        <!-- Disk status button -->
-        <div class="mb-2">
-            <button class="btn btn-outline-success btn-sm" onclick="fetchHermesDisk()">
-                <i class="bi bi-hdd"></i> Disk Status
-            </button>
-        </div>
-        
-        <!-- Hermes logs display area -->
-        <div id="hermes-log-display" class="log-tab-content" style="display:none; max-height: 500px;">
-            <div id="hermes-log-header" class="mb-1"></div>
-            <div id="hermes-log-content"></div>
-        </div>
-        
-        <!-- Hermes disk display area -->
-        <div id="hermes-disk-display" style="display:none;">
-            <div id="hermes-disk-content"></div>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-<div class="content-card p-3 mt-3" id="log-tabs-card">
-    <div class="fw-semibold d-flex justify-content-between align-items-center mb-2">
-        <span>📁 Logs &amp; Server Scan</span>
-        <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-danger" onclick="scanLogs('errors')">🚨 Scan Errors</button>
-            <button class="btn btn-outline-warning" onclick="scanLogs('warnings')">⚠️ Scan Warnings</button>
-            <button class="btn btn-outline-info" onclick="scanLogs('all')">🔍 Full Scan</button>
-            <button class="btn btn-outline-secondary" onclick="refreshLogs()">🔄 Refresh</button>
-        </div>
-    </div>
-    <div id="scan-summary" class="alert alert-info py-2 mb-2" style="display:none;"><strong>Scan Results:</strong> <span id="scan-summary-text"></span></div>
-    <ul class="nav nav-tabs mb-2">
-        <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#logs-all">📋 ALL</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#logs-info">ℹ️ INFO</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#logs-warning">⚠️ WARNINGS</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#logs-error">🚨 ERRORS</a></li>
+    {# --- #11 Tabbed interface --- #}
+    <ul class="nav nav-tabs detail-tabs mb-3">
+        <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tab-overview">📋 Overview</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-hardware">💻 Hardware</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-network">🌐 Network</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-actions">⚙️ Actions</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-timeline">📈 Timeline</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-logs">📁 Logs</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-metrics">📊 Metrics</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-domains">🔗 Domains</a></li>
+        {% if "hermes" in inst.slug %}<li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-ssh">🖥️ SSH</a></li>{% endif %}
     </ul>
     <div class="tab-content">
-        <div class="tab-pane fade show active" id="logs-all"><div class="log-tab-content" id="logs-all-content"></div></div>
-        <div class="tab-pane fade" id="logs-info"><div class="log-tab-content" id="logs-info-content"></div></div>
-        <div class="tab-pane fade" id="logs-warning"><div class="log-tab-content" id="logs-warning-content"></div></div>
-        <div class="tab-pane fade" id="logs-error"><div class="log-tab-content" id="logs-error-content"></div></div>
+
+        {# --- Overview --- #}
+        <div class="tab-pane fade show active" id="tab-overview">
+            <div class="row g-2 small">
+                <div class="col-6"><div class="kv-label">Name</div><div class="kv-value">{{ inst.name }}</div></div>
+                <div class="col-6"><div class="kv-label">Display name</div><div class="kv-value">{{ inst.display_name or '—' }}</div></div>
+                <div class="col-6"><div class="kv-label">Provider</div><div class="kv-value">{{ inst.provider_label }}</div></div>
+                <div class="col-6"><div class="kv-label">🌍 Region</div><div class="kv-value">{{ inst.region or '—' }}</div></div>
+                <div class="col-6"><div class="kv-label">📍 Zone</div><div class="kv-value">{{ inst.availability_zone or '—' }}</div></div>
+                <div class="col-6"><div class="kv-label">🚦 Status</div><div class="kv-value">{{ inst.status }}</div></div>
+                <div class="col-6"><div class="kv-label">🌐 Public IP</div><div class="kv-value"><code data-ip="public">{{ inst.public_ip or '—' }}</code></div></div>
+                <div class="col-6"><div class="kv-label">🔒 Private IP</div><div class="kv-value"><code data-ip="private">{{ inst.private_ip or '—' }}</code></div></div>
+                <div class="col-12"><div class="kv-label">📅 Created</div><div class="kv-value">{{ inst.creation_date or '—' }}</div></div>
+                {% if inst.tags %}<div class="col-12 mt-2"><span class="kv-label">🏷️ Tags</span><br>{% for k, v in inst.tags.items() %}<span class="badge bg-light text-dark border me-1">{{ k }}: {{ v }}</span>{% endfor %}</div>{% endif %}
+            </div>
+        </div>
+
+        {# --- #13 Hardware specs visualization --- #}
+        <div class="tab-pane fade" id="tab-hardware">
+            <div class="row g-2 small mb-3">
+                <div class="col-6"><div class="kv-label">🖥️ Instance type</div><div class="kv-value">{{ inst.instance_type or '—' }}</div></div>
+                <div class="col-6"><div class="kv-label">💻 OS</div><div class="kv-value">{{ inst.os or '—' }}</div></div>
+                <div class="col-6"><div class="kv-label">⚙️ CPU</div><div class="kv-value">{{ inst.cpu or '—' }}</div></div>
+                <div class="col-6"><div class="kv-label">💾 RAM</div><div class="kv-value">{{ inst.ram or '—' }}</div></div>
+                <div class="col-6"><div class="kv-label">💽 Disk</div><div class="kv-value">{{ inst.disk_size or '—' }}</div></div>
+            </div>
+            <div id="specs-host"></div>
+        </div>
+
+        {# --- #14 Network topology --- #}
+        <div class="tab-pane fade" id="tab-network">
+            <div class="row g-2 small mb-3">
+                <div class="col-6"><div class="kv-label">🌐 Public IP</div><div class="kv-value"><code data-ip="public">{{ inst.public_ip or '—' }}</code></div></div>
+                <div class="col-6"><div class="kv-label">🔒 Private IP</div><div class="kv-value"><code data-ip="private">{{ inst.private_ip or '—' }}</code></div></div>
+                <div class="col-6"><div class="kv-label">DNS (public)</div><div class="kv-value">{{ inst.public_dns or '—' }}</div></div>
+                <div class="col-6"><div class="kv-label">DNS (private)</div><div class="kv-value">{{ inst.private_dns or '—' }}</div></div>
+            </div>
+            <div id="topology-host"></div>
+        </div>
+
+        {# --- #12 Actions w/ staged progress loader --- #}
+        <div class="tab-pane fade" id="tab-actions">
+            <div class="btn-group mb-3" id="action-group">
+                <button class="btn btn-success" data-action="start" {% if not inst.can_manage %}disabled{% endif %}>🚀 Start</button>
+                <button class="btn btn-danger" data-action="stop" {% if not inst.can_manage %}disabled{% endif %}>⛔ Stop</button>
+                <button class="btn btn-outline-secondary" data-action="refresh">🔄 Refresh</button>
+            </div>
+            <div class="action-progress" id="action-progress"></div>
+            <div class="small text-muted mt-3">🆔 Instance ID: <code>{{ inst.instance_id }}</code><br>📝 Terraform: <code>{{ inst.address }}</code></div>
+        </div>
+
+
+        {# --- #15 Status change timeline --- #}
+        <div class="tab-pane fade" id="tab-timeline"><div id="timeline-host"></div></div>
+
+        {# --- #17 Log viewer w/ syntax highlight --- #}
+        <div class="tab-pane fade" id="tab-logs">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-danger" onclick="scanLogs('errors')">🚨 Scan Errors</button>
+                    <button class="btn btn-outline-warning" onclick="scanLogs('warnings')">⚠️ Scan Warnings</button>
+                    <button class="btn btn-outline-info" onclick="scanLogs('all')">🔍 Full Scan</button>
+                    <button class="btn btn-outline-secondary" onclick="refreshLogs()">🔄 Refresh</button>
+                </div>
+            </div>
+            <div id="scan-summary" class="alert alert-info py-2 mb-2" style="display:none;"><strong>Scan Results:</strong> <span id="scan-summary-text"></span></div>
+            <ul class="nav nav-tabs mb-2">
+                <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#lp-all">📋 ALL</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#lp-info">ℹ️ INFO</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#lp-warning">⚠️ WARNINGS</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#lp-error">🚨 ERRORS</a></li>
+            </ul>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="lp-all"><div class="log-viewer" id="logs-all-content"></div></div>
+                <div class="tab-pane fade" id="lp-info"><div class="log-viewer" id="logs-info-content"></div></div>
+                <div class="tab-pane fade" id="lp-warning"><div class="log-viewer" id="logs-warning-content"></div></div>
+                <div class="tab-pane fade" id="lp-error"><div class="log-viewer" id="logs-error-content"></div></div>
+            </div>
+        </div>
+
+        {# --- #18 Metrics charts --- #}
+        <div class="tab-pane fade" id="tab-metrics"><div id="metrics-host"></div></div>
+
+        {% if "hermes" in inst.slug %}
+        {# --- #16 Built-in SSH terminal --- #}
+        <div class="tab-pane fade" id="tab-ssh">
+            <div class="mb-2 ssh-banner">
+                <i class="bi bi-robot"></i> Hermes Agent · Web SSH
+                {% if not socketio_available %}<span class="badge bg-warning text-dark">Realtime server not enabled — SSH needs Flask-SocketIO</span>{% endif %}
+            </div>
+            <div id="ssh-host"></div>
+        </div>
+        {% endif %}
+
+        {# --- #19 Custom domain mapping UI --- #}
+        <div class="tab-pane fade" id="tab-domains">
+            <form class="row g-2 mb-3" id="domain-form">
+                <div class="col-md-6">
+                    <input type="text" class="form-control form-control-sm" name="domain" placeholder="e.g. app.example.com" required>
+                </div>
+                <div class="col-md-6"><span class="small text-muted align-middle">Map a custom domain to this instance.</span></div>
+                <div class="col-12"><button class="btn btn-sm btn-primary">➕ Map domain</button></div>
+            </form>
+            <div id="domain-list"></div>
+            <div class="small text-muted mt-3">Note: domain routing must still be configured in DNS (A/CNAME → {{ inst.public_ip or 'server IP' }}). This panel records the mapping for reference.</div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-const STATUS_META = {
-    running:  {cls: 'bg-success', label: 'Running'},
-    stopped:  {cls: 'bg-danger',  label: 'Stopped'},
-    starting: {cls: 'bg-info text-dark', label: 'Starting...'},
-    stopping: {cls: 'bg-warning text-dark', label: 'Stopping...'},
-    error:    {cls: 'bg-danger',  label: 'Error'},
-    unknown:  {cls: 'bg-secondary', label: 'Unknown'},
-    loading:  {cls: 'bg-secondary', label: 'Loading...'}
-};
-const SLUG = {{ inst.slug|tojson }};
-const toastEl = document.getElementById('toast');
-const toast = new bootstrap.Toast(toastEl, {delay: 3500});
-const loaderModal = new bootstrap.Modal(document.getElementById('loaderModal'));
-function showLoader(title, message) {
-    const t = document.getElementById('loaderTitle');
-    if (t) t.textContent = title;
-    const m = document.getElementById('loaderMessage');
-    if (m) m.textContent = message;
-    loaderModal.show();
-}
-function showToast(msg, ok = true) {
-    toastEl.className = `toast align-items-center text-white border-0 ${ok ? 'bg-dark' : 'bg-danger'} hide`;
-    document.getElementById('toast-body').textContent = msg;
-    toast.show();
-}
-function setBadge(status) {
-    const m = STATUS_META[status] || STATUS_META.unknown;
-    const el = document.getElementById('status-badge');
-    el.className = `badge ${m.cls} status-badge`;
-    el.textContent = m.label;
-    el.dataset.status = status;
-}
-async function refreshStatus() {
-    setBadge('loading');
-    try {
-        const res = await fetch(`/api/status/${SLUG}`, {cache: 'no-store'});
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const s = await res.json();
-        setBadge(s.status);
-        // Update IPs on the detail page
-        const pubEl = document.querySelector('[data-ip="public"]');
-        const privEl = document.querySelector('[data-ip="private"]');
-        if (pubEl && s.public_ip) pubEl.textContent = s.public_ip;
-        if (privEl && s.private_ip) privEl.textContent = s.private_ip;
-        const grp = document.getElementById('action-group');
-        if (grp) grp.querySelectorAll('button[data-action="start"], button[data-action="stop"]').forEach(b => b.disabled = !s.can_manage);
-        if (s.error && s.status === 'error') showToast(s.error, false);
-    } catch (e) {
-        showToast('Failed to refresh status: ' + e.message, false);
-        setBadge('unknown');  // FIX: never stuck on "Loading..."
-    }
-}
-// --- Multi-stage action handler ---
-async function pollDetailStatus(targetState, maxTries = 10) {
-    for (let i = 0; i < maxTries; i++) {
-        await new Promise(r => setTimeout(r, 3000));
-        try {
-            const res = await fetch(`/api/status/${SLUG}`, {cache: 'no-store'});
-            const s = await res.json();
-            setBadge(s.status);
-            const pubEl = document.querySelector('[data-ip="public"]');
-            const privEl = document.querySelector('[data-ip="private"]');
-            if (pubEl && s.public_ip) pubEl.textContent = s.public_ip;
-            if (privEl && s.private_ip) privEl.textContent = s.private_ip;
-            if (s.status === targetState) return true;
-            if (s.status === 'error') return false;
-            updateLoader(`Waiting... current state: ${s.status}`);
-        } catch (e) { /* keep polling */ }
-    }
-    return false;
-}
-function updateLoader(message) {
-    const el = document.getElementById('loaderMessage');
-    if (el) el.textContent = message;
-}
-
-document.getElementById('action-group').addEventListener('click', async (ev) => {
-    const btn = ev.target.closest('button[data-action]');
-    if (!btn) return;
-    const action = btn.dataset.action;
-    const targetState = action === 'start' ? 'running' : 'stopped';
-
-    if (action === 'refresh') {
-        showToast('Refreshing status...', true);
-        showLoader('Refreshing', 'Fetching live status from cloud API...');
-        await refreshStatus();
-        loaderModal.hide();
-        showToast('Status refreshed', true);
-        return;
-    }
-
-    if (!confirm(`${action.charAt(0).toUpperCase()+action.slice(1)} this instance?`)) return;
-
-    // Disable buttons
-    document.querySelectorAll('#action-group button[data-action]').forEach(b => b.disabled = true);
-
-    // Stage 1: Sending request
-    showLoader(`${action.charAt(0).toUpperCase()+action.slice(1)} ${SLUG}`, `Stage 1/3: Sending ${action} request to cloud API...`);
-    setBadge(action === 'start' ? 'starting' : 'stopping');
-
-    try {
-        const res = await fetch(`/instance/${SLUG}/${action}`, {method: 'POST'});
-        const data = await res.json();
-
-        if (!data.ok) {
-            showToast(`${action} FAILED: ${data.message}`, false);
-            setBadge('error');
-            return;
-        }
-
-        // Stage 2: Request accepted
-        showToast(`${data.message} — polling for completion...`, true);
-        updateLoader(`Stage 2/3: Request accepted. Polling for status change...`);
-
-        // Stage 3: Poll until settled
-        const settled = await pollDetailStatus(targetState);
-
-        if (settled) {
-            showToast(`${SLUG} is now ${targetState.toUpperCase()} ✓`, true);
-            updateLoader(`Stage 3/3: Instance is now ${targetState} ✓`);
-        } else {
-            showToast(`${SLUG}: action sent but status not yet confirmed. It may take longer.`, false);
-        }
-    } catch (e) {
-        showToast(`${action} request failed: ${e.message}`, false);
-        setBadge('error');
-    } finally {
-        loaderModal.hide();
-        refreshStatus();  // re-enable buttons based on can_manage
-    }
-});
-
-// --- Log fetching ---
-function classifyLogLine(line) {
-    if (line.includes('ERROR')) return 'log-error';
-    if (line.includes('WARNING')) return 'log-warning';
-    if (line.includes('INFO')) return 'log-info';
-    return '';
-}
-function renderLogLines(container, lines) {
-    container.innerHTML = '';
-    if (!lines || lines.length === 0) {
-        container.innerHTML = '<p class="text-muted">No logs available.</p>';
-        return;
-    }
-    lines.forEach(line => {
-        const p = document.createElement('p');
-        p.className = `log-line ${classifyLogLine(line)}`;
-        p.textContent = line;
-        container.appendChild(p);
-    });
-    container.scrollTop = container.scrollHeight;
-}
-async function fetchLogs(type) {
-    try {
-        const res = await fetch(`/logs/${SLUG}?type=${type}`);
-        if (!res.ok) throw new Error('Failed to fetch logs');
-        const data = await res.json();
-        const container = document.getElementById(`logs-${type}-content`);
-        if (container) renderLogLines(container, data.messages);
-    } catch (e) {
-        showToast('Failed to load logs', false);
-    }
-}
-// Smart scan: fetch categorized scan results and display summary
-async function scanLogs(scanType) {
-    const summaryDiv = document.getElementById('scan-summary');
-    const summaryText = document.getElementById('scan-summary-text');
-    showToast(`Scanning for ${scanType}...`, true);
-    try {
-        const res = await fetch(`/logs/${SLUG}/scan`);
-        if (!res.ok) throw new Error('Scan failed');
-        const data = await res.json();
-
-        // Show summary
-        const s = data.summary || {};
-        summaryText.innerHTML = `<strong>${s.instance || SLUG}</strong> (${s.provider || ''}) — ` +
-            `<span class="text-danger">${s.errors || 0} errors</span>, ` +
-            `<span class="text-warning">${s.warnings || 0} warnings</span>, ` +
-            `<span class="text-info">${s.info || 0} info</span> ` +
-            `(total ${s.total || 0} log entries)`;
-        summaryDiv.style.display = 'block';
-
-        // Populate all tabs with scan results
-        renderLogLines(document.getElementById('logs-all-content'), data.all || []);
-        renderLogLines(document.getElementById('logs-info-content'), data.info || []);
-        renderLogLines(document.getElementById('logs-warning-content'), data.warnings || []);
-        renderLogLines(document.getElementById('logs-error-content'), data.errors || []);
-
-        // Switch to the requested tab
-        const tabMap = {errors: 'logs-error', warnings: 'logs-warning', all: 'logs-all'};
-        const targetTab = document.querySelector(`a[href="#${tabMap[scanType] || 'logs-all'}"]`);
-        if (targetTab) new bootstrap.Tab(targetTab).show();
-
-        if (scanType === 'errors' && (s.errors || 0) > 0) {
-            showToast(`Found ${s.errors} error(s) in scan`, false);
-        } else if (scanType === 'warnings' && (s.warnings || 0) > 0) {
-            showToast(`Found ${s.warnings} warning(s) in scan`, true);
-        } else {
-            showToast(`Scan complete: ${s.errors || 0} errors, ${s.warnings || 0} warnings`, true);
-        }
-    } catch (e) {
-        showToast('Scan failed: ' + e.message, false);
-    }
-}
-// Refresh all log tabs
-function refreshLogs() {
-    showToast('Refreshing logs...', true);
-    ['all', 'info', 'warning', 'error'].forEach(fetchLogs);
-    document.getElementById('scan-summary').style.display = 'none';
-}
-// Fetch logs on load
-['all', 'info', 'warning', 'error'].forEach(fetchLogs);
-
-
-// --- Hermes Agent functions ---
-async function fetchHermesLogs(logType) {
-    const statusDiv = document.getElementById('hermes-status');
-    const logDisplay = document.getElementById('hermes-log-display');
-    const logHeader = document.getElementById('hermes-log-header');
-    const logContent = document.getElementById('hermes-log-content');
-    
-    statusDiv.className = 'alert alert-info py-1 mb-2 small';
-    statusDiv.style.display = 'block';
-    statusDiv.innerHTML = `<i class="bi bi-hourglass-split"></i> Fetching ${logType} logs from Hermes server...`;
-    
-    try {
-        const res = await fetch(`/hermes/${SLUG}/logs/${logType}?lines=100`);
-        const data = await res.json();
-        
-        logDisplay.style.display = 'block';
-        
-        if (data.ok && data.data) {
-            const logs = data.data.logs || data.data.gateway || data.data.signal || data.data.commands || [];
-            const logCount = Array.isArray(logs) ? logs.length : (typeof logs === 'object' ? Object.keys(logs).length : 0);
-            
-            logHeader.innerHTML = `<strong>${logType.charAt(0).toUpperCase() + logType.slice(1)} Logs</strong> <span class="badge bg-secondary">${logCount} entries</span> <span class="small text-muted">source: ${data.data.source || 'unknown'}</span>`;
-            logContent.innerHTML = '';
-            
-            if (logType === 'all' && data.data.gateway) {
-                // Combined logs - show all sections
-                for (const [section, lines] of Object.entries(data.data)) {
-                    if (section === 'service_status') continue;
-                    if (Array.isArray(lines)) {
-                        const sectionDiv = document.createElement('div');
-                        sectionDiv.className = 'mb-2';
-                        sectionDiv.innerHTML = `<strong class="text-primary">=== ${section.toUpperCase()} ===</strong>`;
-                        lines.forEach(line => {
-                            const p = document.createElement('p');
-                            p.className = `log-line ${classifyLogLine(line)}`;
-                            p.textContent = line;
-                            sectionDiv.appendChild(p);
-                        });
-                        logContent.appendChild(sectionDiv);
-                    }
-                }
-                if (data.data.service_status) {
-                    logHeader.innerHTML += ` <span class="badge bg-${data.data.service_status === 'active' ? 'success' : 'danger'}">service: ${data.data.service_status}</span>`;
-                }
-            } else if (Array.isArray(logs)) {
-                logs.forEach(line => {
-                    const p = document.createElement('p');
-                    p.className = `log-line ${classifyLogLine(line)}`;
-                    p.textContent = line;
-                    logContent.appendChild(p);
-                });
-            }
-            
-            statusDiv.className = 'alert alert-success py-1 mb-2 small';
-            statusDiv.innerHTML = `<i class="bi bi-check-circle"></i> ${logCount} ${logType} log entries retrieved from Hermes server`;
-        } else {
-            logHeader.innerHTML = `<strong>${logType.charAt(0).toUpperCase() + logType.slice(1)} Logs</strong>`;
-            logContent.innerHTML = `<p class="text-muted">No logs available.</p>`;
-            statusDiv.className = 'alert alert-warning py-1 mb-2 small';
-            statusDiv.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ${data.error || 'Failed to fetch logs'}`;
-        }
-    } catch (e) {
-        statusDiv.className = 'alert alert-danger py-1 mb-2 small';
-        statusDiv.innerHTML = `<i class="bi bi-x-circle"></i> Error: ${e.message}`;
-    }
-}
-
-async function fetchHermesDisk() {
-    const statusDiv = document.getElementById('hermes-status');
-    const diskDisplay = document.getElementById('hermes-disk-display');
-    const diskContent = document.getElementById('hermes-disk-content');
-    
-    statusDiv.className = 'alert alert-info py-1 mb-2 small';
-    statusDiv.style.display = 'block';
-    statusDiv.innerHTML = '<i class="bi bi-hourglass-split"></i> Fetching disk status from Hermes server...';
-    
-    try {
-        const res = await fetch(`/hermes/${SLUG}/disk`);
-        const data = await res.json();
-        
-        diskDisplay.style.display = 'block';
-        
-        if (data.ok && data.data) {
-            const fs = data.data.filesystems || [];
-            let html = '<div class="card"><div class="card-body py-2 px-3">';
-            html += '<h6 class="mb-2"><i class="bi bi-hdd"></i> Disk Usage</h6>';
-            html += '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">';
-            html += '<thead class="table-dark"><tr><th>Filesystem</th><th>Size</th><th>Used</th><th>Avail</th><th>Use%</th><th>Mounted</th></tr></thead><tbody>';
-            fs.forEach(f => {
-                const usePct = parseInt(f.use_pct) || 0;
-                const rowClass = usePct > 90 ? 'table-danger' : (usePct > 75 ? 'table-warning' : '');
-                html += `<tr class="${rowClass}"><td>${f.filesystem || '?'}</td><td>${f.size || '?'}</td><td>${f.used || '?'}</td><td>${f.avail || '?'}</td><td>${f.use_pct || '?'}</td><td>${f.mounted_on || '?'}</td></tr>`;
-            });
-            html += '</tbody></table></div>';
-            
-            // Directory usage
-            if (data.data.directory_usage && data.data.directory_usage.length > 0) {
-                html += '<h6 class="mt-2 mb-1"><i class="bi bi-folder"></i> Directory Sizes</h6>';
-                html += '<div class="row g-1 small">';
-                data.data.directory_usage.forEach(d => {
-                    html += `<div class="col-4"><span class="badge bg-light text-dark border me-1">${d.path}: ${d.size}</span></div>`;
-                });
-                html += '</div>';
-            }
-            
-            html += '</div></div>';
-            diskContent.innerHTML = html;
-            
-            statusDiv.className = 'alert alert-success py-1 mb-2 small';
-            statusDiv.innerHTML = `<i class="bi bi-check-circle"></i> Disk status retrieved from Hermes server`;
-        } else {
-            diskContent.innerHTML = `<p class="text-muted">${data.error || 'Failed to fetch disk status'}</p>`;
-            statusDiv.className = 'alert alert-warning py-1 mb-2 small';
-            statusDiv.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ${data.error || 'Failed to fetch disk status'}`;
-        }
-    } catch (e) {
-        statusDiv.className = 'alert alert-danger py-1 mb-2 small';
-        statusDiv.innerHTML = `<i class="bi bi-x-circle"></i> Error: ${e.message}`;
-    }
-}
-
-async function testHermesConnection() {
-    const statusDiv = document.getElementById('hermes-status');
-    statusDiv.className = 'alert alert-info py-1 mb-2 small';
-    statusDiv.style.display = 'block';
-    statusDiv.innerHTML = '<i class="bi bi-hourglass-split"></i> Testing SSH connection to Hermes server...';
-    
-    try {
-        const res = await fetch(`/hermes/${SLUG}/test`);
-        const data = await res.json();
-        
-        let html = '';
-        if (data.ok) {
-            html = '<i class="bi bi-check-circle"></i> Connection OK<br>';
-            for (const [check, value] of Object.entries(data.checks || {})) {
-                const icon = value === true ? '✅' : (value === false ? '❌' : 'ℹ️');
-                html += `&nbsp;&nbsp;${icon} ${check}: ${JSON.stringify(value)}<br>`;
-            }
-            statusDiv.className = 'alert alert-success py-1 mb-2 small';
-        } else {
-            html = '<i class="bi bi-x-circle"></i> Connection FAILED<br>';
-            for (const [check, value] of Object.entries(data.checks || {})) {
-                html += `&nbsp;&nbsp;${check}: ${JSON.stringify(value)}<br>`;
-            }
-            statusDiv.className = 'alert alert-danger py-1 mb-2 small';
-        }
-        statusDiv.innerHTML = html;
-    } catch (e) {
-        statusDiv.className = 'alert alert-danger py-1 mb-2 small';
-        statusDiv.innerHTML = `<i class="bi bi-x-circle"></i> Error: ${e.message}`;
-    }
-}
-
-// Initial live status (the server-rendered status may be cached/unknown).
-refreshStatus();
-
+    window.SKYDASH_SLUG = {{ inst.slug|tojson }};
+    window.SKYDASH_INST = {{ inst|tojson }};
 </script>
-{% endblock %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/detail.js') }}"></script>
+<script src="{{ url_for('static', filename='js/specs-visualization.js') }}"></script>
+<script src="{{ url_for('static', filename='js/status-timeline.js') }}"></script>
+<script src="{{ url_for('static', filename='js/metrics-charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/topology.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ssh-terminal.js') }}"></script>
+{{ super() }}
+{% endblock scripts %}
+
+

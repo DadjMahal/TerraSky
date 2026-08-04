@@ -53,5 +53,9 @@ skydash/**/__pycache__/
 skydash/flask.log
 skydash/autostart.log
 
+# Runtime state (per-server, not source)
+skydash/status_history.json*
+skydash/.env
+
 # Cline session data (large, private)
 .cline/

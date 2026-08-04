@@ -8,5 +8,6 @@
   "admin_password_hash": "",
   "hidden_instances": [],
   "instance_overrides": {},
-  "custom_instances": []
+  "custom_instances": [],
+  "domain_mappings": []
 }

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -201,63 +202,34 @@ def remove_custom_instance(instance_id: str):
 def get_custom_instances() -> list:
     """Get all custom instances."""
     return load_config().get("custom_instances", [])
-    """Get site settings for templates."""
+
+
+# --- Custom domain mapping (#19) ------------------------------------------
+def get_domain_mappings() -> list:
+    """Return all custom domain→instance mappings [{domain, slug, created}]."""
+    return load_config().get("domain_mappings", [])
+
+
+def add_domain_mapping(domain: str, slug: str) -> dict:
+    """Map a custom domain to an instance slug."""
+    domain = (domain or "").strip().lower()
+    if not domain or not slug:
+        return {}
     config = load_config()
-    return {
-        "site_name": config.get("site_name", "SkyDash"),
-        "site_description": config.get("site_description", ""),
-        "favicon_url": config.get("favicon_url", ""),
-        "logo_url": config.get("logo_url", ""),
-    }
-
-
-def get_admin_profile() -> dict:
-    """Get admin profile info."""
-    config = load_config()
-    return {
-        "username": config.get("admin_username", "admin"),
-        "email": config.get("admin_email", ""),
-    }
-
-
-def verify_password(password: str) -> bool:
-    """Verify admin password against config hash or env var."""
-    config = load_config()
-    stored_hash = config.get("admin_password_hash", "")
-    if stored_hash:
-        return check_password_hash(stored_hash, password)
-    # Fall back to env var
-    env_password = os.environ.get("SKYDASH_ADMIN_PASSWORD", "admin")
-    return password == env_password
-
-
-def set_password(password: str):
-    """Set admin password hash in config (overrides env var)."""
-    config = load_config()
-    config["admin_password_hash"] = generate_password_hash(password)
+    mappings = config.get("domain_mappings", [])
+    mappings = [m for m in mappings if m.get("domain") != domain]
+    entry = {"domain": domain, "slug": slug, "created": time.time()}
+    mappings.append(entry)
+    config["domain_mappings"] = mappings
     save_config(config)
+    return entry
 
 
-def update_profile(username: str | None = None, email: str | None = None):
-    """Update admin profile."""
+def remove_domain_mapping(domain: str) -> None:
+    """Remove a custom domain mapping."""
+    domain = (domain or "").strip().lower()
     config = load_config()
-    if username is not None:
-        config["admin_username"] = username
-    if email is not None:
-        config["admin_email"] = email
-    save_config(config)
-
-
-def update_site_settings(site_name: str | None = None, site_description: str | None = None,
-                          favicon_url: str | None = None, logo_url: str | None = None):
-    """Update site settings."""
-    config = load_config()
-    if site_name is not None:
-        config["site_name"] = site_name
-    if site_description is not None:
-        config["site_description"] = site_description
-    if favicon_url is not None:
-        config["favicon_url"] = favicon_url
-    if logo_url is not None:
-        config["logo_url"] = logo_url
+    config["domain_mappings"] = [
+        m for m in config.get("domain_mappings", []) if m.get("domain") != domain
+    ]
     save_config(config)

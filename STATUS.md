@@ -27,7 +27,8 @@ LISTEN  0  128  0.0.0.0:8080 ...  users:(("python", pid=...,"app.py"))
 | Task | Evidence |
 |------|----------|
 | #1–3 Dashboard UI/UX (theme toggle, animations, fade-in) | Deployed; title check `Login &mdash; SkyDash` on :80 |
-| #4–10 Dashboard UI/UX (Cat 1 complete) | `index.html` + `static/css/dashboard.css` + `static/js/dashboard.js` + `static/js/region-map.js`; new `/api/load` endpoint; verified `dash=200`, `/api/load` returns 7 rows, `/api/statuses` OK, all static assets HTTP 200 on test :8091 (2026-08-04) |
+| #4–10 Dashboard UI/UX (Cat 1 complete) | `index.html` + `static/css/dashboard.css` + `static/js/dashboard.js` + `static/js/region-map.js`; new `/api/load` endpoint; verified `dash=200`, `/api/load` returns 7 rows, `/api/statuses` OK, all static assets HTTP 200 on test :8091 (2026-08-04); **DEPLOYED LIVE**: public `/api/load`→302 (route exists) + `/static/css/dashboard.css`→200 on 74.248.232.219 via GitHub Actions commit 6b08829 |
+| #11–19 Detail pages (Cat 2 complete) | tabbed detail.html + `detail.css` + 6 JS modules (specs, timeline, metrics, topology, ssh-terminal, detail); backends `/api/metrics`, `/api/status-history`, `/api/domains`, Socket.IO `/ssh` (ssh_bridge.py); Flask-SocketIO in requirements + pip-install step in deploy.yml; verified on test :8093: detail=200, engine.io handshake OK, history recorded (2026-08-04) |
 | CI/CD pipeline fixed (nginx + systemd deploy) | GitHub Actions SUCCESS run 77c0f1f |
 | 100-task planning docs | `skydash/docs/task_planning/*.md` + `TASKS.md` board |
 | New doc framework | `START_HERE.md`, `AGENT_ONBOARDING.md`, `WORKFLOW.md`, `TASKS.md`, `STATUS.md`, `SESSION_HANDOFF.md` |
@@ -53,8 +54,8 @@ LISTEN  0  128  0.0.0.0:8080 ...  users:(("python", pid=...,"app.py"))
 ## 🔜 Next steps (highest impact first)
 
 1. Install cloud SDKs into server venv so all 4 providers report live status (prerequisite for many tasks).
-2. Continue with **Category 2 — UI/UX Detail pages** (#11 tabs, #12 progress loader…).
-3. Then Category 3 Hermes agent (SSH/file mgmt) & Category 5 logging.
+2. Continue with **Category 3 — Hermes Agent** (#26 state widget, #27 SSH terminal, #28 remote exec…).
+3. Then Category 5 logging.
    > "Set secure `SKYDASH_ADMIN_PASSWORD`" was moved to the **Backlog** in `TASKS.md` (security hardening).
 
 ## ⚙️ How to refresh this

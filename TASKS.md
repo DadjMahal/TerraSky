@@ -34,15 +34,15 @@
 
 | # | Task | Status | Owner | Result / Evidence |
 |---|------|--------|-------|-------------------|
-| 11 | Detail page with tabs | ⬜ pending | | |
-| 12 | Progress loader for actions | ⬜ pending | | |
-| 13 | Hardware specs visualization | ⬜ pending | | |
-| 14 | Network topology map | ⬜ pending | | |
-| 15 | Status change timeline | ⬜ pending | | |
-| 16 | Built-in SSH terminal | ⬜ pending | | |
-| 17 | Log viewer w/ syntax highlight | ⬜ pending | | |
-| 18 | Metrics charts for instance | ⬜ pending | | |
-| 19 | Custom domain mapping UI | ⬜ pending | | |
+| 11 | Detail page with tabs | ✅ done | Cline | tabbed detail (Overview/Hardware/Network/Actions/Timeline/Logs/Metrics/Domains/SSH); `detail.html` (2026-08-04) |
+| 12 | Progress loader for actions | ✅ done | Cline | staged animated action loader; `detail.js` (2026-08-04) |
+| 13 | Hardware specs visualization | ✅ done | Cline | SVG CPU/RAM/Disk gauges; `specs-visualization.js` (2026-08-04) |
+| 14 | Network topology map | ✅ done | Cline | SVG topology (Internet→pub/priv IP/DNS); `topology.js` (2026-08-04) |
+| 15 | Status change timeline | ✅ done | Cline | horizontal timeline from `/api/status-history` (status_history.py); `status-timeline.js` (2026-08-04) |
+| 16 | Built-in SSH terminal | ✅ done | Cline | xterm.js + Flask-SocketIO ↔ paramiko bridge for Hermes; `ssh_bridge.py`+`ssh-terminal.js` (2026-08-04) |
+| 17 | Log viewer w/ syntax highlight | ✅ done | Cline | color-coded level highlight; `.log-viewer` CSS (2026-08-04) |
+| 18 | Metrics charts for instance | ✅ done | Cline | Chart.js CPU/RAM/disk (+ live disk for Hermes); `/api/metrics`; `metrics-charts.js` (2026-08-04) |
+| 19 | Custom domain mapping UI | ✅ done | Cline | domain tab UI + CRUD via `/api/domains` persisted in config_store (2026-08-04) |
 
 ## Category 3 — Hermes Agent (15)
 

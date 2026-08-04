@@ -14,12 +14,12 @@ systemd-managed, GitHub Actions CI/CD. Inventory from `terraform/terraform.tfsta
 
 - **Live:** http://74.248.232.219/ serves `Login &mdash; SkyDash` (HTTP 200 via nginx).
 - **CI/CD:** GitHub Actions deploy works end-to-end (sync → nginx → systemd → health check).
-- **Done so far:** tasks #1–3 (Dashboard UI/UX) + **#4–10 (Cat 1 complete: region map,
-  tag filters, drag-drop, CPU/RAM bars, toasts, context menu, pagination)** +
-  CI/CD pipeline fix + 100-task planning.
-- **Remaining:** 90 task-board items (UI/UX detail pages, Hermes/Cline agents, logging,
-  Cloudflare, monitoring, backups, ports) — see `TASKS.md`. "Set secure admin password"
-  moved to Backlog.
+- **Done so far:** Cat 1 (#1–10 Dashboard UI/UX) + **Cat 2 (#11–19 Detail pages: tabs,
+  progress loader, specs gauges, network topology, status timeline, web SSH terminal
+  via Socket.IO/paramiko, log viewer, metrics charts, domain mapping)** + CI/CD pipeline
+  fix + 100-task planning.
+- **Remaining:** 82 task-board items (Hermes/Cline agents, logging, Cloudflare,
+  monitoring, backups, ports) — see `TASKS.md`. "Set secure admin password" moved to Backlog.
 
 ## 3. Architecture (how files fit together)
 
@@ -80,6 +80,6 @@ lazy-imported inside provider methods to keep 1 GB RAM usage low.
 ## 7. Next recommended path
 
 1. Install missing cloud SDKs in server venv (fixes live status for all 4 providers).
-2. **Category 2 — UI/UX Detail pages** (#11 tabs, #12 progress loader…).
-3. Then Category 3 (Hermes) and Category 5 (logging).
+2. **Category 3 — Hermes Agent** (#26 state widget, #27 SSH terminal, #28 remote exec…).
+3. Then Category 5 (logging).
    > "Set secure admin password" was moved to the Backlog in `TASKS.md`.

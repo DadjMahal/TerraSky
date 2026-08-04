@@ -87,6 +87,20 @@ jobs:
 
 
 
+      - name: Install / upgrade Python dependencies (server venv)
+        run: |
+          set -e
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no volodro@${{ secrets.SERVER_IP }} '
+            set -e
+            cd /home/volodro/skydash
+            if [ ! -d venv ]; then python3 -m venv venv; fi
+            ./venv/bin/pip install --upgrade pip >/dev/null
+            ./venv/bin/pip install -r requirements.txt
+            echo "=== Installed deps ==="
+            ./venv/bin/pip list 2>/dev/null | grep -iE "flask-socketio|paramiko|boto3" || true
+          '
+
+
       - name: Deploy and restart SkyDash
         run: |
           set -e
