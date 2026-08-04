@@ -44,6 +44,7 @@ jobs:
             terraform/ volodro@${{ secrets.SERVER_IP }}:/home/volodro/terraform/ \
             --exclude=".terraform/" --exclude=".env"
           # Sync nginx reverse-proxy config (routes port 80 -> Flask 8080)
+          ssh -i ~/.ssh/deploy_key volodro@${{ secrets.SERVER_IP }} "mkdir -p /home/volodro/deploy/nginx"
           rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
             deploy/nginx/skydash.conf volodro@${{ secrets.SERVER_IP }}:/home/volodro/deploy/nginx/skydash.conf
           rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
