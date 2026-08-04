@@ -12,7 +12,13 @@
 !skydash/
 !deploy/
 !Documentation/
+!scripts/
+!scripts/**
 !DOCUMENTATION_REVIEW.md
+!START_HERE.md
+!AGENT_ONBOARDING.md
+!TASKS.md
+!STATUS.md
 
 # ============================================================
 # Re-ignore sensitive/junk INSIDE whitelisted dirs

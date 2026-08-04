@@ -1,9 +1,13 @@
 # SkyDash — Multi-Cloud Infrastructure Management Panel
 
-> **THIS FILE IS THE PROJECT MEMORY.** Read it first, every time. It contains the
-> full project explanation, architecture, file-by-file guide, live task tracking
-> (TODO / IN PROGRESS / DONE), and instructions for any AI assistant (Cline /
-> Hermes) that works on this project.
+> **THIS FILE IS THE PROJECT MEMORY / TECHNICAL REFERENCE.** It documents the full
+> architecture, API, CI/CD and task tracking.
+>
+> **NEW SESSION RECOVERY SYSTEM:** Use **`START_HERE.md`** (root) for fast session
+> orientation + routing table + reality-check (the recommended entry point now).
+> Rules: `AGENT_ONBOARDING.md` · Workflow: `Documentation/WORKFLOW.md` ·
+> Task board: `TASKS.md` · Status: `STATUS.md` · Depth: `Documentation/SESSION_HANDOFF.md`.
+> See **[Section 12. Session & Documentation System](#12-session--documentation-scalper-system).**
 
 ---
 
@@ -46,21 +50,26 @@ SDKs are imported lazily inside provider methods to keep memory low.
 
 | Item | Status |
 |------|--------|
-| 🔄 **Last Session Activity** | Task #1-3 implemented: Dark/Light mode toggle, CSS animations (2026-08-02) |
-| ✅ **Last Completed Task** | Tasks #1-3: Dashboard UI/UX enhancements - theme toggle, animations, fade-in effects |
-| 🎯 **Next Step** | Task #4-5: Interactive region map, enhanced filters, drag-and-drop reordering |
-| 📁 **Key Files Modified** | `skydash/templates/base.html`, `skydash/templates/index.html` |
-| 📍 **Session Summary** | `skydash/docs/session_summary_100_tasks_2026-08-02.md` |
-| 📝 **Execution Log** | `Documentation/logs/2026-08-02_100-tasks-generation-planning.md` |
+| 🔄 **Last Session Activity** | Adopted L2JMDadj-style doc/session system (START_HERE, rules, board, workflow) (2026-08-04) |
+| ✅ **Last Completed Task** | New multi-layer documentation system + CI/CD pipeline live (site online) |
+| 🎯 **Next Step** | Install cloud SDKs in server venv; UI/UX #4-5; secure admin password |
+| 📁 **First Read** | **`START_HERE.md`** (root) — fast orient + routing table + reality check |
+| 📋 **Task Board** | `TASKS.md` · **Status** `STATUS.md` · **Depth** `Documentation/SESSION_HANDOFF.md` |
+| 📝 **Execution Log** | `Documentation/logs/2026-08-04_session-documentation-upgrade.md` |
 
-### How to recover context in a new session:
+### How to recover context in a new session (NEW RECOMMENDED FLOW):
 
-1. Read this README.md first (you are here)
-2. Read `REQUIREMENTS.md` for behavioral rules
-3. Read `SPEC.md` for feature goals
-4. Read `PROMPT_LOGGING.md` for logging requirements
-5. Read the latest session summary in `skydash/docs/`
-6. Read the latest execution log in `Documentation/logs/`
+1. Read **`START_HERE.md`** (root) — fast orient, routing table, reality check
+2. If `SESSION_IN_PROGRESS.md` exists → **resume it** first
+3. Read `AGENT_ONBOARDING.md` — 7 hard rules
+4. Read `TASKS.md` — pick the first pending task
+5. Read `Documentation/SESSION_HANDOFF.md` — for depth (once per session)
+6. Run `bash scripts/status.sh` — live state (paste output as evidence)
+7. Read the latest execution log in `Documentation/logs/`
+
+(Legacy: for behavior rules see `REQUIREMENTS.md`, feature goals `SPEC.md`,
+logging `PROMPT_LOGGING.md`; old session summaries are archived in
+`skydash/docs/_archive_sessions/`.)
 
 ---
 
@@ -496,5 +505,47 @@ For comprehensive task planning covering UI/UX, Agent integration, Logging, Clou
 - **IN_PROGRESS**: Currently being worked on
 - **DONE**: Completed successfully
 - **BLOCKED**: Pending required resources
+
+---
+
+## 12. Session & Documentation System (adopted from L2JMDadj best practice)
+
+SkyDash now uses a **multi-layer, resume-aware documentation system** for AI
+assistants (Cline / Hermes), modeled on the proven L2JMDadj workflow.
+
+### File roles
+
+| File | Role |
+|------|------|
+| `START_HERE.md` (root) | **Fast orientation (~800 tokens)** — resume check, routing table, reality-check commands, 7 hard rules summary |
+| `AGENT_ONBOARDING.md` (root) | The **7 hard rules** + token budgets + quick start |
+| `Documentation/WORKFLOW.md` | Session lifecycle, milestone doc-sync, rate-limit resumability, RuntimeLog & git conventions |
+| `TASKS.md` (root) | **Live 100-task board** (status / owner / result / evidence) |
+| `STATUS.md` (root) | **Honest verified current state** (run `scripts/status.sh`) |
+| `Documentation/SESSION_HANDOFF.md` | **Depth** — full project state & knowledge, rewritten each session |
+| `SESSION_IN_PROGRESS.md` (root, temp) | Mid-work checkpoint for rate-limit-safe resumability |
+| `Documentation/logs/*.md` | Execution logs (per PROMPT_LOGGING.md) |
+| `skydash/docs/_archive_sessions/` | Quarantined old session summaries |
+
+### Session scripts
+
+```bash
+bash scripts/session_start.sh   # resume-aware orientation
+bash scripts/status.sh          # one-shot live state (reality check / evidence)
+bash scripts/session_end.sh     # milestone doc-sync + git commit + cleanup
+```
+
+### Core workflow (every session)
+
+1. Read `START_HERE.md` → if `SESSION_IN_PROGRESS.md` exists, **resume** it first.
+2. Read `AGENT_ONBOARDING.md` (rules) → `TASKS.md` (pick first pending task).
+3. Run `scripts/status.sh` — **paste output** before claiming anything works (rule #1).
+4. After every milestone, **doc-sync**: update `TASKS.md`, `STATUS.md`,
+   `SESSION_HANDOFF.md` (+ `START_HERE.md` if needed) and git-commit — even mid-session.
+
+### The 7 Hard Rules (full text in AGENT_ONBOARDING.md)
+
+1. Verify before claim · 2. No fake logs · 3. Usage validation · 4. Audit-first ·
+5. Document before code · 6. Leave cleaner · 7. Milestone doc-sync.
 
 ---

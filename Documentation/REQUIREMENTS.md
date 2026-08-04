@@ -1,8 +1,15 @@
 # Requirements for Cline (CLI Assistant)
 
+> **Session & rules framework:** For the fast session-recovery flow, routing table and
+> the **7 Hard Rules**, see **`START_HERE.md`** (root) and **`AGENT_ONBOARDING.md`**
+> (root). For the workflow / milestone doc-sync / resumability, see
+> `Documentation/WORKFLOW.md`. This file keeps the project-specific behavioral
+> requirements (language, logging, constraints).
+
 ## General Behavior Rules
 
-1. Always start by reading the documentation inside the `Documentation/` directory.
+1. Always start by reading the documentation: `START_HERE.md` first, then the
+   `Documentation/` directory as needed (routing table decides what to read).
 
 2. Before modifying code or configuration, make sure the current project structure is fully understood by reading `README.md`.
 
@@ -22,14 +29,16 @@
    - What was changed.
    - Why it was changed.
 
-5. After completing every task:
+5. After completing every task (and after EVERY milestone — see WORKFLOW.md):
 
    - Update `README.md`
    - Reflect new functionality.
    - Document architecture changes.
    - Describe fixed issues.
+   - Update the knowledge base: `TASKS.md`, `STATUS.md`, `Documentation/SESSION_HANDOFF.md`.
 
-6. Always verify functionality after making changes.
+6. Always verify functionality after making changes (rule: verify before claim —
+   paste command output).
 
 Examples:
 

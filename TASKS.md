@@ -1,0 +1,171 @@
+# 📋 TASKS — SkyDash Task Board (live)
+
+> Live board of all 100 planned tasks. Claim a task: set status `in_progress` +
+> owner, work it, verify, then set `done` + Result + Evidence. Detail for each task
+> lives in `skydash/docs/task_planning/`. Rules: `AGENT_ONBOARDING.md` / `WORKFLOW.md`.
+
+## Legend
+
+| Status | Meaning |
+|--------|---------|
+| ⬜ `pending` | Not started / available to claim |
+| 🔵 `in_progress` | Being worked on (set owner) |
+| ✅ `done` | Completed + verified (with Evidence) |
+| 🔴 `blocked` | Blocked — needs resources/user input |
+
+---
+
+## Category 1 — UI/UX Dashboard (10)
+
+| # | Task | Status | Owner | Result / Evidence |
+|---|------|--------|-------|-------------------|
+| 1 | Dashboard — adaptive design | ✅ done | Cline | base.html/index.html updated, deployed (2026-08-02) |
+| 2 | Dark/Light Mode Toggle | ✅ done | Cline | theme toggle in navbar; live on 74.248.232.219 |
+| 3 | CSS animations (hover/fade) | ✅ done | Cline | fade-in cards, hover gradient; deployed |
+| 4 | Interactive region map | ⬜ pending | | |
+| 5 | Enhanced tag filters | ⬜ pending | | |
+| 6 | Drag-and-drop reordering | ⬜ pending | | |
+| 7 | CPU/RAM load visualization | ⬜ pending | | |
+| 8 | Toast notifications w/ animation | ⬜ pending | | |
+| 9 | Quick Actions context menu | ⬜ pending | | |
+| 10 | Infinite scroll / pagination | ⬜ pending | | |
+
+## Category 2 — UI/UX Detail Pages (10)
+
+| # | Task | Status | Owner | Result / Evidence |
+|---|------|--------|-------|-------------------|
+| 11 | Detail page with tabs | ⬜ pending | | |
+| 12 | Progress loader for actions | ⬜ pending | | |
+| 13 | Hardware specs visualization | ⬜ pending | | |
+| 14 | Network topology map | ⬜ pending | | |
+| 15 | Status change timeline | ⬜ pending | | |
+| 16 | Built-in SSH terminal | ⬜ pending | | |
+| 17 | Log viewer w/ syntax highlight | ⬜ pending | | |
+| 18 | Metrics charts for instance | ⬜ pending | | |
+| 19 | Custom domain mapping UI | ⬜ pending | | |
+
+## Category 3 — Hermes Agent (15)
+
+| # | Task | Status | Owner | Result / Evidence |
+|---|------|--------|-------|-------------------|
+| 26 | Agent state indicator widget | ⬜ pending | | |
+| 27 | Built-in SSH terminal | ⬜ pending | | |
+| 28 | Remote command exec + history | ⬜ pending | | |
+| 29 | SSH file manager | ⬜ pending | | |
+| 30 | File upload/download | ⬜ pending | | |
+| 31 | Real-time process monitor | ⬜ pending | | |
+| 32 | Network activity graphs | ⬜ pending | | |
+| 33 | System resource usage (CPU/RAM/Disk) | ⬜ pending | | |
+| 34 | System restart/shutdown control | ⬜ pending | | |
+| 35 | Config cloning capability | ⬜ pending | | |
+| 36 | System settings backup/restore | ⬜ pending | | |
+| 37 | Multi-agent manager dashboard | ⬜ pending | | |
+| 38 | Agent audit trail logging | ⬜ pending | | |
+| 39 | Emergency stop button | ⬜ pending | | |
+| 40 | Agent health check automation | ⬜ pending | | |
+
+## Category 4 — Cline Agent (15)
+
+| # | Task | Status | Owner | Result / Evidence |
+|---|------|--------|-------|-------------------|
+| 27 | Cline task execution interface | ⬜ pending | | |
+| 28 | Task queue w/ progress bar | ⬜ pending | | |
+| 29 | Cline data flow visualization | ⬜ pending | | |
+| 30 | Task management interface | ⬜ pending | | |
+| 31 | Cline logs searchable | ⬜ pending | | |
+| 32 | Cline webhook integration | ⬜ pending | | |
+| 33 | Cline template system | ⬜ pending | | |
+| 34 | Task scheduling system | ⬜ pending | | |
+| 35 | Cline notification system | ⬜ pending | | |
+| 36 | Cline error recovery | ⬜ pending | | |
+| 37 | Parallel execution control | ⬜ pending | | |
+| 38 | Env vars manager | ⬜ pending | | |
+| 39 | Cline output visualization | ⬜ pending | | |
+| 40 | Git repository integration | ⬜ pending | | |
+| 41 | Cline code quality checks | ⬜ pending | | |
+
+## Category 5 — Error Logging System (20)
+
+| # | Task | Status | Owner | Result / Evidence |
+|---|------|--------|-------|-------------------|
+| 42 | Centralized logging (ELK) | ⬜ pending | | |
+| 43 | Structured JSON logging | ⬜ pending | | |
+| 44 | Log levels + custom handlers | ⬜ pending | | |
+| 45 | Log rotation/retention | ⬜ pending | | |
+| 46 | Log correlation ID | ⬜ pending | | |
+| 47 | Real-time log streaming | ⬜ pending | | |
+| 48 | Advanced log search | ⬜ pending | | |
+| 49 | Log alerting system | ⬜ pending | | |
+| 50 | Anomaly detection | ⬜ pending | | |
+| 51 | Log dashboard | ⬜ pending | | |
+| 52 | Error grouping/clustering | ⬜ pending | | |
+| 53 | Traceback visualization | ⬜ pending | | |
+| 54 | Log export (CSV/JSON/PDF) | ⬜ pending | | |
+| 55 | Log comparison between instances | ⬜ pending | | |
+| 56 | Performance metrics logging | ⬜ pending | | |
+| 57 | Audit trail for admin actions | ⬜ pending | | |
+| 58 | Security event logging | ⬜ pending | | |
+| 59 | Health check endpoints | ⬜ pending | | |
+| 60 | Synthetic transaction monitoring | ⬜ pending | | |
+
+## Category 6 — Cloudflare Integration (12)
+
+| # | Task | Status | Owner | Result / Evidence |
+|---|------|--------|-------|-------------------|
+| 61 | Cloudflare API integration | ⬜ pending | | |
+| 62 | DNS records management | ⬜ pending | | |
+| 63 | SSL/TLS certificate management | ⬜ pending | | |
+| 64 | DDoS protection config | ⬜ pending | | |
+| 65 | Firewall rules manager | ⬜ pending | | |
+| 66 | Workers deployment control | ⬜ pending | | |
+| 67 | CDN configuration | ⬜ pending | | |
+| 68 | Page Rules management | ⬜ pending | | |
+| 69 | Zone settings | ⬜ pending | | |
+| 70 | Argo Tunnel integration | ⬜ pending | | |
+| 71 | Access Policies | ⬜ pending | | |
+| 72 | Cloudflare analytics dashboard | ⬜ pending | | |
+
+## Category 7 — Live Monitoring (10)
+
+| # | Task | Status | Owner | Result / Evidence |
+|---|------|--------|-------|-------------------|
+| 73 | htop-style interface | ⬜ pending | | |
+| 74 | Real-time CPU/Mem/Disk | ⬜ pending | | |
+| 75 | Network activity graphs | ⬜ pending | | |
+| 76 | Process tree visualization | ⬜ pending | | |
+| 77 | File system activity | ⬜ pending | | |
+| 78 | System calls tracing | ⬜ pending | | |
+| 79 | Container/resource usage | ⬜ pending | | |
+| 80 | Alert history dashboard | ⬜ pending | | |
+| 81 | Custom metric agents | ⬜ pending | | |
+| 82 | Historical data viz | ⬜ pending | | |
+
+## Category 8 — Backup System (8)
+
+| # | Task | Status | Owner | Result / Evidence |
+|---|------|--------|-------|-------------------|
+| 83 | Full instance backup | ⬜ pending | | |
+| 84 | Incremental backup | ⬜ pending | | |
+| 85 | Backup retention policies | ⬜ pending | | |
+| 86 | Backup encryption | ⬜ pending | | |
+| 87 | Restore to different instance | ⬜ pending | | |
+| 88 | Automated backup scheduling | ⬜ pending | | |
+| 89 | Backup verification/integrity | ⬜ pending | | |
+| 90 | Disaster recovery plan | ⬜ pending | | |
+
+## Category 9 — Port/Permission Management (10)
+
+| # | Task | Status | Owner | Result / Evidence |
+|---|------|--------|-------|-------------------|
+| 91 | Security groups mgmt (all clouds) | ⬜ pending | | |
+| 92 | Inbound/Outbound rules | ⬜ pending | | |
+| 93 | Port ranges w/ validation | ⬜ pending | | |
+| 94 | IP whitelist/blacklist | ⬜ pending | | |
+| 95 | Security group templates | ⬜ pending | | |
+| 96 | Auto security group generation | ⬜ pending | | |
+| 97 | VPN tunnel management | ⬜ pending | | |
+| 98 | Firewall rules history | ⬜ pending | | |
+| 99 | Compliance checking | ⬜ pending | | |
+| 100 | Breach detection + alerting | ⬜ pending | | |
+
+
