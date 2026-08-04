@@ -62,8 +62,13 @@ py_compile on app/config_store/status_history/ssh_bridge OK
 ```
 
 ## Deployment
-Commit then `git push origin main` → GitHub Actions (new pip-install step) → verify public:
-`/static/css/detail.css` 200, `/api/metrics/<slug>` route exists (302 unauth), Socket.IO handshake.
+Committed + pushed commit 3e20e8d → GitHub Actions (new pip-install step) → **VERIFIED LIVE**:
+```
+public /login = 200
+public /static/css/detail.css = 200
+public /api/metrics/aws-hermes = 302 (route exists ➜ new app.py live)
+public socket.io handshake = 0{"sid":"_c8qxqES64GaPaC4AAAA","upgrades":["websocket"],...}
+```
 
 ## Next steps
 - Begin **Category 3 — Hermes Agent** (#26–40).
