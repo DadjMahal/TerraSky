@@ -68,7 +68,7 @@ def inject_settings():
 
 # In-process TTL cache for live statuses, to avoid hammering cloud APIs on every
 # dashboard load. A short TTL keeps the dashboard responsive but bounded.
-_STATUS_TTL = 60  # seconds — longer TTL so auto-refresh (30s) always hits cache
+_STATUS_TTL = 30  # seconds — short enough that transient errors clear quickly
 _status_cache: dict[str, tuple[float, dict]] = {}
 import threading
 _cache_lock = threading.Lock()
@@ -138,7 +138,7 @@ def api_statuses():
             uncached.append(inst)
     # Fetch uncached statuses in parallel (max 7 threads — one per instance)
     if uncached:
-        with ThreadPoolExecutor(max_workers=7) as pool:
+        with ThreadPoolExecutor(max_workers=4) as pool:
             future_map = {pool.submit(_live_status, inst): inst.slug for inst in uncached}
             for future in as_completed(future_map):
                 slug = future_map[future]

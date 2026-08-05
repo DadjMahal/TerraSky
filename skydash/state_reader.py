@@ -165,7 +165,11 @@ def _map_oracle(attrs: dict) -> dict:
         creation_date=attrs.get("time_created", ""),
         tags=attrs.get("freeform_tags") or {},
         instance_id=attrs.get("id", ""),
-        extra={},
+        extra={
+            # Propagate compartment_id so OracleProvider._get_live_ips can list
+            # VNIC attachments in the correct compartment without re-reading config.
+            "compartment_id": attrs.get("compartment_id", ""),
+        },
     )
 
 

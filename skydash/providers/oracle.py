@@ -34,6 +34,7 @@ class OracleProvider(CloudProvider):
     key = "oracle"
     _cached_client = None
     _cached_network_client = None
+    _cached_config = None
     _client_lock = None
 
     def __init__(self):
@@ -47,6 +48,15 @@ class OracleProvider(CloudProvider):
         )
 
     def _config(self) -> dict:
+        """Build (and cache) the OCI config dict from env vars.
+
+        Caching avoids re-reading the private key file and re-validating the
+        config on every status check — the original code called validate_config
+        2-3 times per request, which is wasteful and fragile under I/O pressure.
+        Explicit timeouts prevent long-hanging API calls on the 1 GB server.
+        """
+        if self._cached_config is not None:
+            return self._cached_config
         import oci
 
         config = {
@@ -55,8 +65,14 @@ class OracleProvider(CloudProvider):
             "fingerprint": os.environ["OCI_FINGERPRINT"],
             "key_file": os.environ["OCI_PRIVATE_KEY_PATH"],
             "region": os.environ["OCI_REGION"],
+            # Explicit timeouts so a hung OCI API call doesn't block the
+            # status thread indefinitely (default OCI SDK timeouts are very long).
+            "connect_timeout": 5,
+            "read_timeout": 10,
+            "timeout": 10,
         }
         oci.config.validate_config(config)
+        self._cached_config = config
         return config
 
     def _client(self):
@@ -94,12 +110,12 @@ class OracleProvider(CloudProvider):
             compute = self._client()
             net = self._network_client()
             # List VNIC attachments for this instance
+            # Use the compartment_id from the instance metadata (populated from
+            # TF state by state_reader) or fall back to the tenancy OCID from
+            # the cached config — avoids a redundant _config() call here.
+            compartment_id = instance.extra.get("compartment_id") or self._config()["tenancy"]
             attachments = compute.list_vnic_attachments(
-                compartment_id=(
-                    self._config()["tenancy"]
-                    if not instance.extra.get("compartment_id")
-                    else instance.extra["compartment_id"]
-                ),
+                compartment_id=compartment_id,
                 instance_id=instance.instance_id,
             ).data
             public_ip = ""
