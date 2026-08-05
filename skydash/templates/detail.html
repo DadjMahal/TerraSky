@@ -1,100 +1,108 @@
 {% extends "base.html" %}
-{% block title %}🖥️ {{ inst.name }} | {{ site_name }}{% endblock %}
+{% block title %}{{ inst.name }} | {{ site_name }}{% endblock %}
 {% block nav_actions %}
-            <a href="/" class="btn btn-outline-light btn-sm">⬅️ Back to Dashboard</a>
+            <a href="/" class="btn btn-console btn-sm"><i class="bi bi-arrow-left"></i> Dashboard</a>
 {% endblock %}
 {% block content %}
-<div class="content-card p-4 mb-3">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h2 class="mb-0"><i class="bi {{ inst.icon }} provider-icon"></i>{{ inst.name }}
-            <small class="text-muted fs-6">{{ inst.provider_label }}</small></h2>
-        <span class="badge bg-secondary status-badge" id="status-badge" data-status="{{ inst.status }}">⏳ Loading...</span>
+{% set strip = {'aws': 'strip-aws', 'azure': 'strip-azure', 'oracle': 'strip-oracle', 'alibaba': 'strip-alibaba'}.get(inst.provider, 'strip-default') %}
+<div class="panel mb-3" style="overflow:hidden;">
+    <div class="instance-strip {{ strip }}"></div>
+    <div class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h1 class="h3 mb-0 d-flex align-items-center gap-2">
+            <i class="bi {{ inst.icon }} provider-icon provider-{{ inst.provider }}"></i>
+            {{ inst.name }}
+            <span class="text-faint fs-6 fw-normal">{{ inst.provider_label }}</span>
+        </h1>
+        <span class="status-pill status-loading" id="status-badge" data-status="{{ inst.status }}"><span class="beacon-dot"></span>Loading</span>
     </div>
 
-    {# --- #11 Tabbed interface --- #}
-    <ul class="nav nav-tabs detail-tabs mb-3">
-        <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tab-overview">📋 Overview</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-hardware">💻 Hardware</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-network">🌐 Network</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-actions">⚙️ Actions</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-timeline">📈 Timeline</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-logs">📁 Logs</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-metrics">📊 Metrics</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-domains">🔗 Domains</a></li>
-        {% if "hermes" in inst.slug %}<li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-ssh">🖥️ SSH</a></li>{% endif %}
+    {# --- Tabbed interface --- #}
+    <ul class="nav nav-tabs detail-tabs mb-3 flex-nowrap overflow-auto">
+        <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tab-overview"><i class="bi bi-clipboard-data"></i> Overview</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-hardware"><i class="bi bi-cpu"></i> Hardware</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-network"><i class="bi bi-diagram-3"></i> Network</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-actions"><i class="bi bi-sliders"></i> Actions</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-timeline"><i class="bi bi-clock-history"></i> Timeline</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-logs"><i class="bi bi-journal-text"></i> Logs</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-metrics"><i class="bi bi-graph-up"></i> Metrics</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-domains"><i class="bi bi-link-45deg"></i> Domains</a></li>
+        {% if "hermes" in inst.slug %}<li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-ssh"><i class="bi bi-terminal"></i> SSH</a></li>{% endif %}
     </ul>
     <div class="tab-content">
 
         {# --- Overview --- #}
         <div class="tab-pane fade show active" id="tab-overview">
-            <div class="row g-2 small">
-                <div class="col-6"><div class="kv-label">Name</div><div class="kv-value">{{ inst.name }}</div></div>
-                <div class="col-6"><div class="kv-label">Display name</div><div class="kv-value">{{ inst.display_name or '—' }}</div></div>
-                <div class="col-6"><div class="kv-label">Provider</div><div class="kv-value">{{ inst.provider_label }}</div></div>
-                <div class="col-6"><div class="kv-label">🌍 Region</div><div class="kv-value">{{ inst.region or '—' }}</div></div>
-                <div class="col-6"><div class="kv-label">📍 Zone</div><div class="kv-value">{{ inst.availability_zone or '—' }}</div></div>
-                <div class="col-6"><div class="kv-label">🚦 Status</div><div class="kv-value">{{ inst.status }}</div></div>
-                <div class="col-6"><div class="kv-label">🌐 Public IP</div><div class="kv-value"><code data-ip="public">{{ inst.public_ip or '—' }}</code></div></div>
-                <div class="col-6"><div class="kv-label">🔒 Private IP</div><div class="kv-value"><code data-ip="private">{{ inst.private_ip or '—' }}</code></div></div>
-                <div class="col-12"><div class="kv-label">📅 Created</div><div class="kv-value">{{ inst.creation_date or '—' }}</div></div>
-                {% if inst.tags %}<div class="col-12 mt-2"><span class="kv-label">🏷️ Tags</span><br>{% for k, v in inst.tags.items() %}<span class="badge bg-light text-dark border me-1">{{ k }}: {{ v }}</span>{% endfor %}</div>{% endif %}
+            <div class="row g-3 kv-grid">
+                <div class="col-6 col-md-4"><div class="kv-label">Name</div><div class="kv-value">{{ inst.name }}</div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Display name</div><div class="kv-value">{{ inst.display_name or '—' }}</div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Provider</div><div class="kv-value">{{ inst.provider_label }}</div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Region</div><div class="kv-value">{{ inst.region or '—' }}</div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Zone</div><div class="kv-value">{{ inst.availability_zone or '—' }}</div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Status</div><div class="kv-value text-capitalize">{{ inst.status }}</div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Public IP</div><div class="kv-value"><code data-ip="public">{{ inst.public_ip or '—' }}</code></div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Private IP</div><div class="kv-value"><code data-ip="private">{{ inst.private_ip or '—' }}</code></div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Created</div><div class="kv-value">{{ inst.creation_date or '—' }}</div></div>
+                {% if inst.tags %}<div class="col-12 mt-1"><div class="kv-label mb-2">Tags</div>{% for k, v in inst.tags.items() %}<span class="tag-pill me-1"><i class="bi bi-tag"></i>{{ k }}: {{ v }}</span>{% endfor %}</div>{% endif %}
             </div>
         </div>
 
-        {# --- #13 Hardware specs visualization --- #}
+        {# --- Hardware specs visualization --- #}
         <div class="tab-pane fade" id="tab-hardware">
-            <div class="row g-2 small mb-3">
-                <div class="col-6"><div class="kv-label">🖥️ Instance type</div><div class="kv-value">{{ inst.instance_type or '—' }}</div></div>
-                <div class="col-6"><div class="kv-label">💻 OS</div><div class="kv-value">{{ inst.os or '—' }}</div></div>
-                <div class="col-6"><div class="kv-label">⚙️ CPU</div><div class="kv-value">{{ inst.cpu or '—' }}</div></div>
-                <div class="col-6"><div class="kv-label">💾 RAM</div><div class="kv-value">{{ inst.ram or '—' }}</div></div>
-                <div class="col-6"><div class="kv-label">💽 Disk</div><div class="kv-value">{{ inst.disk_size or '—' }}</div></div>
+            <div class="row g-3 kv-grid mb-4">
+                <div class="col-6 col-md-3"><div class="kv-label">Instance type</div><div class="kv-value">{{ inst.instance_type or '—' }}</div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">OS</div><div class="kv-value">{{ inst.os or '—' }}</div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">CPU</div><div class="kv-value">{{ inst.cpu or '—' }}</div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">RAM</div><div class="kv-value">{{ inst.ram or '—' }}</div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">Disk</div><div class="kv-value">{{ inst.disk_size or '—' }}</div></div>
             </div>
             <div id="specs-host"></div>
         </div>
 
-        {# --- #14 Network topology --- #}
+        {# --- Network topology --- #}
         <div class="tab-pane fade" id="tab-network">
-            <div class="row g-2 small mb-3">
-                <div class="col-6"><div class="kv-label">🌐 Public IP</div><div class="kv-value"><code data-ip="public">{{ inst.public_ip or '—' }}</code></div></div>
-                <div class="col-6"><div class="kv-label">🔒 Private IP</div><div class="kv-value"><code data-ip="private">{{ inst.private_ip or '—' }}</code></div></div>
-                <div class="col-6"><div class="kv-label">DNS (public)</div><div class="kv-value">{{ inst.public_dns or '—' }}</div></div>
-                <div class="col-6"><div class="kv-label">DNS (private)</div><div class="kv-value">{{ inst.private_dns or '—' }}</div></div>
+            <div class="row g-3 kv-grid mb-4">
+                <div class="col-6 col-md-3"><div class="kv-label">Public IP</div><div class="kv-value"><code data-ip="public">{{ inst.public_ip or '—' }}</code></div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">Private IP</div><div class="kv-value"><code data-ip="private">{{ inst.private_ip or '—' }}</code></div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">DNS (public)</div><div class="kv-value">{{ inst.public_dns or '—' }}</div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">DNS (private)</div><div class="kv-value">{{ inst.private_dns or '—' }}</div></div>
             </div>
             <div id="topology-host"></div>
         </div>
 
-        {# --- #12 Actions w/ staged progress loader --- #}
+        {# --- Actions w/ staged progress loader --- #}
         <div class="tab-pane fade" id="tab-actions">
             <div class="btn-group mb-3" id="action-group">
-                <button class="btn btn-success" data-action="start" {% if not inst.can_manage %}disabled{% endif %}>🚀 Start</button>
-                <button class="btn btn-danger" data-action="stop" {% if not inst.can_manage %}disabled{% endif %}>⛔ Stop</button>
-                <button class="btn btn-outline-secondary" data-action="refresh">🔄 Refresh</button>
+                <button class="btn btn-success" data-action="start" {% if not inst.can_manage %}disabled{% endif %}><i class="bi bi-play-fill"></i> Start</button>
+                <button class="btn btn-danger" data-action="stop" {% if not inst.can_manage %}disabled{% endif %}><i class="bi bi-stop-fill"></i> Stop</button>
+                <button class="btn btn-outline-secondary" data-action="refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
             </div>
             <div class="action-progress" id="action-progress"></div>
-            <div class="small text-muted mt-3">🆔 Instance ID: <code>{{ inst.instance_id }}</code><br>📝 Terraform: <code>{{ inst.address }}</code></div>
+            <div class="small text-faint mt-3 font-mono">
+                Instance ID: <code>{{ inst.instance_id }}</code><br>
+                Terraform address: <code>{{ inst.address }}</code>
+            </div>
         </div>
 
-
-        {# --- #15 Status change timeline --- #}
+        {# --- Status change timeline --- #}
         <div class="tab-pane fade" id="tab-timeline"><div id="timeline-host"></div></div>
 
-        {# --- #17 Log viewer w/ syntax highlight --- #}
+        {# --- Log viewer w/ syntax highlight --- #}
         <div class="tab-pane fade" id="tab-logs">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                 <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-danger" onclick="scanLogs('errors')">🚨 Scan Errors</button>
-                    <button class="btn btn-outline-warning" onclick="scanLogs('warnings')">⚠️ Scan Warnings</button>
-                    <button class="btn btn-outline-info" onclick="scanLogs('all')">🔍 Full Scan</button>
-                    <button class="btn btn-outline-secondary" onclick="refreshLogs()">🔄 Refresh</button>
+                    <button class="btn btn-outline-danger" onclick="scanLogs('errors')"><i class="bi bi-exclamation-octagon"></i> Scan errors</button>
+                    <button class="btn btn-outline-warning" onclick="scanLogs('warnings')"><i class="bi bi-exclamation-triangle"></i> Scan warnings</button>
+                    <button class="btn btn-outline-info" onclick="scanLogs('all')"><i class="bi bi-search"></i> Full scan</button>
+                    <button class="btn btn-outline-secondary" onclick="refreshLogs()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
                 </div>
             </div>
-            <div id="scan-summary" class="alert alert-info py-2 mb-2" style="display:none;"><strong>Scan Results:</strong> <span id="scan-summary-text"></span></div>
+            <div id="scan-summary" class="alert alert-info py-2 mb-2" style="display:none;"><strong>Scan results:</strong> <span id="scan-summary-text"></span></div>
             <ul class="nav nav-tabs mb-2">
-                <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#lp-all">📋 ALL</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#lp-info">ℹ️ INFO</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#lp-warning">⚠️ WARNINGS</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#lp-error">🚨 ERRORS</a></li>
+                <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#lp-all">All</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#lp-info">Info</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#lp-warning">Warnings</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#lp-error">Errors</a></li>
             </ul>
             <div class="tab-content">
                 <div class="tab-pane fade show active" id="lp-all"><div class="log-viewer" id="logs-all-content"></div></div>
@@ -104,32 +112,33 @@
             </div>
         </div>
 
-        {# --- #18 Metrics charts --- #}
+        {# --- Metrics charts --- #}
         <div class="tab-pane fade" id="tab-metrics"><div id="metrics-host"></div></div>
 
         {% if "hermes" in inst.slug %}
-        {# --- #16 Built-in SSH terminal --- #}
+        {# --- Built-in SSH terminal --- #}
         <div class="tab-pane fade" id="tab-ssh">
             <div class="mb-2 ssh-banner">
-                <i class="bi bi-robot"></i> Hermes Agent · Web SSH
-                {% if not socketio_available %}<span class="badge bg-warning text-dark">Realtime server not enabled — SSH needs Flask-SocketIO</span>{% endif %}
+                <i class="bi bi-robot"></i> Hermes agent &middot; web SSH
+                {% if not socketio_available %}<span class="status-pill status-starting"><span class="beacon-dot"></span>Realtime server not enabled — SSH needs Flask-SocketIO</span>{% endif %}
             </div>
             <div id="ssh-host"></div>
         </div>
         {% endif %}
 
-        {# --- #19 Custom domain mapping UI --- #}
+        {# --- Custom domain mapping UI --- #}
         <div class="tab-pane fade" id="tab-domains">
-            <form class="row g-2 mb-3" id="domain-form">
+            <form class="row g-2 mb-3 align-items-center" id="domain-form">
                 <div class="col-md-6">
                     <input type="text" class="form-control form-control-sm" name="domain" placeholder="e.g. app.example.com" required>
                 </div>
-                <div class="col-md-6"><span class="small text-muted align-middle">Map a custom domain to this instance.</span></div>
-                <div class="col-12"><button class="btn btn-sm btn-primary">➕ Map domain</button></div>
+                <div class="col-md-6"><span class="small text-faint">Map a custom domain to this instance.</span></div>
+                <div class="col-12"><button class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Map domain</button></div>
             </form>
             <div id="domain-list"></div>
-            <div class="small text-muted mt-3">Note: domain routing must still be configured in DNS (A/CNAME → {{ inst.public_ip or 'server IP' }}). This panel records the mapping for reference.</div>
+            <div class="small text-faint mt-3">Note: domain routing must still be configured in DNS (A/CNAME &rarr; {{ inst.public_ip or 'server IP' }}). This panel records the mapping for reference.</div>
         </div>
+    </div>
     </div>
 </div>
 {% endblock %}
@@ -148,5 +157,3 @@
 <script src="{{ url_for('static', filename='js/ssh-terminal.js') }}"></script>
 {{ super() }}
 {% endblock scripts %}
-
-

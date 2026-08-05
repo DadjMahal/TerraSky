@@ -46,7 +46,21 @@
         const target = document.getElementById("ssh-terminal");
         if (!target) return;
 
-        term = new Terminal({ cursorBlink: true, fontSize: 13, theme: { background: "#000000", foreground: "#00ff00" } });
+        term = new Terminal({
+            cursorBlink: true,
+            fontSize: 13,
+            fontFamily: "'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace",
+            theme: {
+                background: "#0A0F1C",
+                foreground: "#A9E8D6",
+                cursor: "#4FC8E8",
+                black: "#0A0F1C",
+                green: "#34D399",
+                brightGreen: "#5EEAD4",
+                red: "#FB7185",
+                brightBlack: "#5B6A8C",
+            },
+        });
         if (window.FitAddon) { fitAddon = new FitAddon.FitAddon(); term.loadAddon(fitAddon); }
         term.open(target);
         if (fitAddon) fitAddon.fit();

@@ -7,18 +7,20 @@
     "use strict";
 
     // ---- Status badge helpers ------------------------------------------------
+    // Each status maps to a --status-* color token in tokens.css (see
+    // Documentation/FRONTEND_HANDBOOK.md). Add new states in both places.
     const STATUS_META = {
-        running: { cls: "bg-success", label: "Running" },
-        stopped: { cls: "bg-danger", label: "Stopped" },
-        starting: { cls: "bg-info text-dark", label: "Starting..." },
-        stopping: { cls: "bg-warning text-dark", label: "Stopping..." },
-        error: { cls: "bg-danger", label: "Error" },
-        unknown: { cls: "bg-secondary", label: "Unknown" },
-        loading: { cls: "bg-secondary", label: "Loading..." },
+        running: { cls: "status-running", label: "Running" },
+        stopped: { cls: "status-stopped", label: "Stopped" },
+        starting: { cls: "status-starting beacon-pulse", label: "Starting" },
+        stopping: { cls: "status-stopping beacon-pulse", label: "Stopping" },
+        error: { cls: "status-error", label: "Error" },
+        unknown: { cls: "status-unknown", label: "Unknown" },
+        loading: { cls: "status-loading", label: "Loading" },
     };
     function badgeHtml(status) {
         const m = STATUS_META[status] || STATUS_META.unknown;
-        return `<span class="badge ${m.cls} status-badge" data-status-badge>${m.label}</span>`;
+        return `<span class="status-pill ${m.cls}" data-status-badge><span class="beacon-dot"></span>${m.label}</span>`;
     }
     function setCardStatus(card, status) {
         card.dataset.status = status;
@@ -41,18 +43,19 @@
     function showToast(msg, ok = true, duration = 3500) {
         const stack = document.getElementById("toast-stack");
         if (!stack) return;
-        const color = ok ? "bg-dark" : "bg-danger";
-        const icon = ok ? "✅" : "⛔";
+        const kind = ok ? "success" : "danger";
+        const icon = ok ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill";
         const el = document.createElement("div");
-        el.className = `skydash-toast toast align-items-center text-white border-0 ${color}`;
+        el.className = `skydash-toast toast-${kind}`;
         el.style.setProperty("--toast-duration", duration + "ms");
         el.innerHTML =
-            `<div class="d-flex w-100">
-                <div class="toast-body">${icon} ${String(msg).replace(/</g, "&lt;")}</div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto"></button>
+            `<div class="d-flex align-items-center gap-2 px-3 py-2">
+                <i class="bi ${icon}"></i>
+                <div class="flex-grow-1" style="font-size:var(--text-sm);">${String(msg).replace(/</g, "&lt;")}</div>
+                <button type="button" class="btn-close-toast" aria-label="Dismiss"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="toast-progress"></div>`;
-        el.querySelector(".btn-close").addEventListener("click", () => dismiss(el));
+        el.querySelector(".btn-close-toast").addEventListener("click", () => dismiss(el));
         stack.appendChild(el);
         setTimeout(() => dismiss(el), duration);
     }
@@ -148,7 +151,7 @@
         if (!grid) return;
         Sortable.create(grid, {
             animation: 150,
-            handle: ".card-header",
+            handle: ".card-header-drag",
             draggable: ".card-col",
             ghostClass: "dragging",
             onEnd() {
@@ -315,8 +318,8 @@
     // ---- Init ----------------------------------------------------------------
     document.addEventListener("DOMContentLoaded", () => {
         collectTagOptions();
-        populateSelect("filter-type", "🖥️ All types");
-        populateSelect("filter-region", "🌍 All regions");
+        populateSelect("filter-type", "All types");
+        populateSelect("filter-region", "All regions");
 
         document.getElementById("search")?.addEventListener("input", applyFilters);
         ["filter-provider", "filter-status", "filter-type", "filter-region"]

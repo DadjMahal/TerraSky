@@ -38,8 +38,9 @@ cd /home/volodro && git log --oneline -5                         # recent work
 | Full state & progress              | `Documentation/SESSION_HANDOFF.md` (once per session)                  |
 | Pick a task / task status          | `TASKS.md` (board)                                                     |
 | Live deployed status               | `STATUS.md` + run `scripts/status.sh`                                  |
-| UI/UX Dashboard (tasks 1–10)       | `skydash/docs/task_planning/01_ux_shutek_dashboard.md`                 |
-| UI/UX Detail pages (11–20)         | `skydash/docs/task_planning/02_ux_shutek_detail_pages.md`              |
+| UI/UX — any frontend template/CSS/JS work | **`skydash/docs/FRONTEND_HANDBOOK.md`** — read this FIRST, it's the current design system spec (post-redesign) |
+| UI/UX Dashboard (tasks 1–10), historical | `skydash/docs/task_planning/01_ux_shutek_dashboard.md` (superseded by FRONTEND_HANDBOOK.md for conventions; still useful for original task rationale) |
+| UI/UX Detail pages (11–20), historical | `skydash/docs/task_planning/02_ux_shutek_detail_pages.md` (superseded by FRONTEND_HANDBOOK.md for conventions; still useful for original task rationale) |
 | Hermes agent (26–40)               | `skydash/docs/task_planning/03_agent_hermes_integration.md` + `hermes_agent.py` |
 | Cline agent (27–41)                | `skydash/docs/task_planning/04_agent_cline_integration.md`             |
 | Error logging (42–61)              | `skydash/docs/task_planning/05_error_logging_system.md` + `app.py` caching |

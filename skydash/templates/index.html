@@ -1,155 +1,159 @@
 {% extends "base.html" %}
-{% block title %}📊 Dashboard | {{ site_name }}{% endblock %}
+{% block title %}Dashboard | {{ site_name }}{% endblock %}
 {% block nav_actions %}
-            <span class="badge bg-secondary" id="instance-count">{{ instances|length }} 🖥️</span>
-            <span class="badge bg-info text-dark" title="Auto-refresh every 30s">🔄 Auto</span>
-            <button type="button" id="map-toggle" class="btn btn-outline-light btn-sm toolbar-btn" title="Toggle region map">🗺️ Map</button>
-            <a href="/refresh" class="btn btn-outline-light btn-sm">🔄 Refresh</a>
+            <span class="chip" title="Total instances"><i class="bi bi-hdd-stack"></i> {{ instances|length }}</span>
+            <span class="chip" title="Auto-refresh every 30s"><span class="chip-dot"></span>Live</span>
+            <button type="button" id="map-toggle" class="btn btn-console btn-sm toolbar-btn" title="Toggle region map"><i class="bi bi-map"></i> Map</button>
+            <a href="/refresh" class="btn btn-console btn-sm"><i class="bi bi-arrow-clockwise"></i> Refresh</a>
 {% endblock %}
 {% block content %}
-    <div class="content-card p-3 mb-3">
+    <div class="panel p-3 mb-3">
         <div class="row g-2 align-items-center">
             <div class="col-md-3">
                 <div class="input-group input-group-sm">
-                    <span class="input-group-text">🔍</span>
-                    <input type="text" id="search" class="form-control" placeholder="Search name, provider, type, region, IP...">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" id="search" class="form-control" placeholder="Search name, provider, type, region, IP&hellip;">
                 </div>
             </div>
             <div class="col-md-2">
                 <select id="filter-provider" class="form-select form-select-sm">
-                    <option value="">🌐 All providers</option>
-                    <option value="aws">☁️ AWS</option>
-                    <option value="azure">☁️ Azure</option>
-                    <option value="oracle">☁️ Oracle</option>
-                    <option value="alibaba">☁️ Alibaba</option>
+                    <option value="">All providers</option>
+                    <option value="aws">AWS</option>
+                    <option value="azure">Azure</option>
+                    <option value="oracle">Oracle</option>
+                    <option value="alibaba">Alibaba</option>
                 </select>
             </div>
             <div class="col-md-2">
                 <select id="filter-status" class="form-select form-select-sm">
-                    <option value="">📋 All statuses</option>
-                    <option value="running">🟢 Running</option>
-                    <option value="stopped">🔴 Stopped</option>
-                    <option value="starting">🟡 Starting</option>
-                    <option value="stopping">🟠 Stopping</option>
-                    <option value="error">❌ Error</option>
-                    <option value="unknown">❓ Unknown</option>
+                    <option value="">All statuses</option>
+                    <option value="running">Running</option>
+                    <option value="stopped">Stopped</option>
+                    <option value="starting">Starting</option>
+                    <option value="stopping">Stopping</option>
+                    <option value="error">Error</option>
+                    <option value="unknown">Unknown</option>
                 </select>
             </div>
             <div class="col-md-2">
                 <select id="filter-type" class="form-select form-select-sm">
-                    <option value="">🖥️ All types</option>
+                    <option value="">All types</option>
                 </select>
             </div>
             <div class="col-md-2">
                 <select id="filter-region" class="form-select form-select-sm">
-                    <option value="">🌍 All regions</option>
+                    <option value="">All regions</option>
                 </select>
             </div>
             <div class="col-md-1">
                 <div class="tag-dropdown">
                     <button type="button" id="tag-toggle" class="btn btn-sm btn-outline-secondary tag-drop-label">
-                        🏷️ Tags<span id="tag-count"></span>
+                        <i class="bi bi-tags"></i><span id="tag-count"></span>
                     </button>
                     <div class="tag-drop-panel" id="tag-options"></div>
                 </div>
             </div>
             <div class="col-md-2">
                 <select id="sort-by" class="form-select form-select-sm">
-                    <option value="name">🔤 Sort: Name</option>
-                    <option value="provider">☁️ Sort: Provider</option>
-                    <option value="status">🚦 Sort: Status</option>
-                    <option value="region">🌍 Sort: Region</option>
+                    <option value="name">Sort: Name</option>
+                    <option value="provider">Sort: Provider</option>
+                    <option value="status">Sort: Status</option>
+                    <option value="region">Sort: Region</option>
                 </select>
             </div>
         </div>
-        <div class="mt-2 small text-muted">
-            <i class="bi bi-info-circle"></i> Drag card headers to reorder (saved in your browser) · Right-click a card for quick actions.
+        <div class="mt-2 toolbar-hint">
+            <i class="bi bi-info-circle"></i> Drag card headers to reorder (saved in your browser) &middot; right-click a card for quick actions.
         </div>
     </div>
 
-    {# --- #4 Interactive region map (hidden until "Map" is toggled) --- #}
-    <div class="content-card p-2 mb-3" id="region-map-wrap" style="display:none;">
+    {# --- Interactive region map (hidden until "Map" is toggled) --- #}
+    <div class="panel p-2 mb-3" id="region-map-wrap" style="display:none;">
         <div id="map-error" class="small text-center py-2"></div>
         <div id="region-map"></div>
     </div>
 
     <div class="row g-3" id="cards">
         {% for i in instances %}
+        {% set strip = {'aws': 'strip-aws', 'azure': 'strip-azure', 'oracle': 'strip-oracle', 'alibaba': 'strip-alibaba'}.get(i.provider, 'strip-default') %}
         <div class="col-12 col-md-6 col-xxl-4 card-col fade-in" data-slug="{{ i.slug }}"
              data-name="{{ i.name|lower }}" data-provider="{{ i.provider }}"
              data-status="loading" data-region="{{ i.region|lower }}"
              data-type="{{ i.instance_type|lower }}"
              data-tags='{{ i.tags|tojson|forceescape }}'>
-            <div class="content-card instance-card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center bg-white" style="border-radius: 1rem 1rem 0 0; cursor: grab;">
-                    <span>
-                        <i class="bi {{ i.icon }} provider-icon"></i>
-                        <a href="/instance/{{ i.slug }}" class="text-decoration-none fw-semibold">{{ i.name }}</a>
+            <div class="panel instance-card h-100">
+                <div class="instance-strip {{ strip }}"></div>
+                <div class="card-header-drag">
+                    <span class="d-flex align-items-center gap-2 text-truncate">
+                        <i class="bi {{ i.icon }} provider-icon provider-{{ i.provider }}"></i>
+                        <a href="/instance/{{ i.slug }}" class="card-name text-truncate">{{ i.name }}</a>
                     </span>
-                    <span class="badge bg-secondary status-badge" data-status-badge>⏳ Loading...</span>
+                    <span class="status-pill status-loading" data-status-badge><span class="beacon-dot"></span>Loading</span>
                 </div>
                 <div class="card-body">
-                    <div class="row g-2 small">
-                        <div class="col-6"><div class="kv-label">🖥️ Type</div><div class="kv-value">{{ i.instance_type or '—' }}</div></div>
-                        <div class="col-6"><div class="kv-label">🌍 Region</div><div class="kv-value">{{ i.region or '—' }}</div></div>
-                        <div class="col-6"><div class="kv-label">📍 Zone</div><div class="kv-value">{{ i.availability_zone or '—' }}</div></div>
-                        <div class="col-6"><div class="kv-label">💻 OS</div><div class="kv-value">{{ i.os or '—' }}</div></div>
-                        <div class="col-6"><div class="kv-label">🌐 Public IP</div><div class="kv-value"><code data-ip="public">{{ i.public_ip or '—' }}</code></div></div>
-                        <div class="col-6"><div class="kv-label">🔒 Private IP</div><div class="kv-value"><code data-ip="private">{{ i.private_ip or '—' }}</code></div></div>
-                        <div class="col-12"><div class="kv-label">💽 Disk</div><div class="kv-value">{{ i.disk_size or '—' }}</div></div>
-                        <div class="col-12"><div class="kv-label">📅 Created</div><div class="kv-value">{{ i.creation_date or '—' }}</div></div>
+                    <div class="row g-2 kv-grid">
+                        <div class="col-6"><div class="kv-label">Type</div><div class="kv-value">{{ i.instance_type or '—' }}</div></div>
+                        <div class="col-6"><div class="kv-label">Region</div><div class="kv-value">{{ i.region or '—' }}</div></div>
+                        <div class="col-6"><div class="kv-label">Zone</div><div class="kv-value">{{ i.availability_zone or '—' }}</div></div>
+                        <div class="col-6"><div class="kv-label">OS</div><div class="kv-value">{{ i.os or '—' }}</div></div>
+                        <div class="col-6"><div class="kv-label">Public IP</div><div class="kv-value"><code data-ip="public">{{ i.public_ip or '—' }}</code></div></div>
+                        <div class="col-6"><div class="kv-label">Private IP</div><div class="kv-value"><code data-ip="private">{{ i.private_ip or '—' }}</code></div></div>
+                        <div class="col-12"><div class="kv-label">Disk</div><div class="kv-value">{{ i.disk_size or '—' }}</div></div>
+                        <div class="col-12"><div class="kv-label">Created</div><div class="kv-value">{{ i.creation_date or '—' }}</div></div>
                     </div>
-                    {# --- #7 CPU/RAM load visualization --- #}
-                    <div class="mt-2">
+                    <div class="mt-3">
                         <div class="metric-bar">
-                            <div class="metric-label"><span>⚙️ CPU</span><span data-bar-label="cpu">{{ i.cpu or '—' }}</span></div>
-                            <div class="progress"><div class="progress-bar bg-info" data-bar="cpu" style="width:0%"></div></div>
+                            <div class="metric-label"><span>CPU</span><span data-bar-label="cpu">{{ i.cpu or '—' }}</span></div>
+                            <div class="progress"><div class="progress-bar metric-cpu" data-bar="cpu" style="width:0%"></div></div>
                         </div>
                         <div class="metric-bar">
-                            <div class="metric-label"><span>💾 RAM</span><span data-bar-label="ram">{{ i.ram or '—' }}</span></div>
-                            <div class="progress"><div class="progress-bar bg-success" data-bar="ram" style="width:0%"></div></div>
+                            <div class="metric-label"><span>RAM</span><span data-bar-label="ram">{{ i.ram or '—' }}</span></div>
+                            <div class="progress"><div class="progress-bar metric-ram" data-bar="ram" style="width:0%"></div></div>
                         </div>
                     </div>
                     {% if i.tags %}
-                    <div class="mt-2">
-                        {% for k, v in i.tags.items() %}<span class="badge bg-light text-dark border me-1">🏷️ {{ k }}: {{ v }}</span>{% endfor %}
+                    <div class="mt-2 d-flex flex-wrap gap-1">
+                        {% for k, v in i.tags.items() %}<span class="tag-pill"><i class="bi bi-tag"></i>{{ k }}: {{ v }}</span>{% endfor %}
                     </div>
                     {% endif %}
                 </div>
-                <div class="card-footer d-flex justify-content-between align-items-center bg-white" style="border-radius: 0 0 1rem 1rem;">
+                <div class="card-footer-actions">
                     <div class="btn-group btn-group-sm" data-actions>
-                        <button class="btn btn-success" data-action="start" {% if not i.can_manage %}disabled{% endif %}>🚀 Start</button>
-                        <button class="btn btn-danger" data-action="stop" {% if not i.can_manage %}disabled{% endif %}>⛔ Stop</button>
-                        <button class="btn btn-outline-secondary" data-action="refresh">🔄</button>
+                        <button class="btn btn-success" data-action="start" title="Start" {% if not i.can_manage %}disabled{% endif %}><i class="bi bi-play-fill"></i></button>
+                        <button class="btn btn-danger" data-action="stop" title="Stop" {% if not i.can_manage %}disabled{% endif %}><i class="bi bi-stop-fill"></i></button>
+                        <button class="btn btn-outline-secondary" data-action="refresh" title="Refresh status"><i class="bi bi-arrow-clockwise"></i></button>
                     </div>
-                    <a href="/instance/{{ i.slug }}" class="btn btn-sm btn-outline-primary">📝 Details →</a>
+                    <a href="/instance/{{ i.slug }}" class="btn btn-sm btn-outline-primary">Details <i class="bi bi-arrow-right"></i></a>
                 </div>
             </div>
         </div>
         {% endfor %}
     </div>
 
-
     {% if not instances %}
-    <div class="alert alert-info">No instances found. 🤷</div>
+    <div class="state-panel">
+        <div class="state-icon"><i class="bi bi-hdd-stack"></i></div>
+        <h1 class="h4">No instances found</h1>
+        <p>Nothing is registered with this dashboard yet. Add an instance in the Terraform inventory to see it here.</p>
+    </div>
     {% endif %}
 
-    {# --- #10 Pagination / infinite scroll --- #}
+    {# --- Pagination / infinite scroll --- #}
     <div id="scroll-sentinel"></div>
     <div class="pagination-controls" id="pagination-controls" style="display:none;">
         <span class="align-self-center small text-muted" id="load-count"></span>
-        <button type="button" class="btn btn-sm btn-outline-primary" id="show-more">⬇️ Load more</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="show-more"><i class="bi bi-chevron-down"></i> Load more</button>
     </div>
 
-    {# --- #9 Quick actions context menu --- #}
+    {# --- Quick actions context menu --- #}
     <div id="context-menu">
-        <div class="ctx-head">⚡ <span id="ctx-title">Instance</span></div>
-        <button data-ctx-action="start">🚀 Start</button>
-        <button data-ctx-action="stop" class="danger">⛔ Stop</button>
-        <button data-ctx-action="refresh">🔄 Refresh status</button>
+        <div class="ctx-head"><i class="bi bi-lightning-charge-fill"></i> <span id="ctx-title">Instance</span></div>
+        <button id="ctx-start" data-ctx-action="start"><i class="bi bi-play-fill"></i> Start</button>
+        <button id="ctx-stop" data-ctx-action="stop" class="danger"><i class="bi bi-stop-fill"></i> Stop</button>
+        <button data-ctx-action="refresh"><i class="bi bi-arrow-clockwise"></i> Refresh status</button>
         <hr>
-        <a id="ctx-detail" class="btn btn-sm w-100 text-start" style="padding:.4rem .6rem;border-radius:.35rem;color:var(--text-primary);">📝 Details</a>
-        <a id="ctx-logs" class="btn btn-sm w-100 text-start" style="padding:.4rem .6rem;border-radius:.35rem;color:var(--text-primary);">📄 View Logs</a>
+        <a id="ctx-detail" class="btn btn-sm w-100 text-start"><i class="bi bi-arrow-right-circle"></i> Details</a>
+        <a id="ctx-logs" class="btn btn-sm w-100 text-start"><i class="bi bi-journal-text"></i> View logs</a>
     </div>
 {% endblock %}
 
@@ -165,4 +169,3 @@
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {{ super() }}
 {% endblock scripts %}
-

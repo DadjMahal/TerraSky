@@ -37,7 +37,8 @@ LISTEN  0  128  0.0.0.0:8080 ...  users:(("python", pid=...,"app.py"))
 
 | Task | Owner | Note |
 |------|-------|------|
-| — | | none right now |
+| **Full frontend redesign** (all templates + all CSS + visual layer of all JS) | Claude (Anthropic), 2026-08-05 | Built and reviewed **offline** — every template test-rendered via Jinja2 with dummy data (incl. edge cases: empty dashboard, admin edit modal, SSH tab), zero emoji remaining (scripted check), screenshotted via local headless render and manually reviewed. **NOT deployed, NOT click-tested against the live server** — no cloud creds / live instance data were available in that environment. See `skydash/docs/FRONTEND_HANDBOOK.md` § 8 "What is NOT verified" for the exact deploy+click-test checklist before this can move to "Done & verified". Two pre-existing bugs fixed in passing: dead `#ctx-start`/`#ctx-stop` refs in the context menu, missing `.hidden-by-page` CSS rule (pagination silently not hiding cards). |
+
 
 ## 🟠 Known limitations / open issues
 
@@ -53,9 +54,12 @@ LISTEN  0  128  0.0.0.0:8080 ...  users:(("python", pid=...,"app.py"))
 
 ## 🔜 Next steps (highest impact first)
 
-1. Install cloud SDKs into server venv so all 4 providers report live status (prerequisite for many tasks).
-2. Continue with **Category 3 — Hermes Agent** (#26 state widget, #27 SSH terminal, #28 remote exec…).
-3. Then Category 5 logging.
+1. **Deploy + verify the frontend redesign** (see In Progress above and
+   `skydash/docs/FRONTEND_HANDBOOK.md` § 8) — doesn't block the items below,
+   but should happen before more UI work is layered on top of it.
+2. Install cloud SDKs into server venv so all 4 providers report live status (prerequisite for many tasks).
+3. Continue with **Category 3 — Hermes Agent** (#26 state widget, #27 SSH terminal, #28 remote exec…).
+4. Then Category 5 logging.
    > "Set secure `SKYDASH_ADMIN_PASSWORD`" was moved to the **Backlog** in `TASKS.md` (security hardening).
 
 ## ⚙️ How to refresh this

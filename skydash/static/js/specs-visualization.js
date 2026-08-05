@@ -25,7 +25,7 @@
         <div class="spec-gauge col-4">
           <svg viewBox="0 0 120 120">
             <path class="gauge-track" d="${arcPath(cx, cy, r, 135, 405)}" fill="none" stroke-width="10"/>
-            <path class="gauge-fill" d="${arcPath(cx, cy, r, 135, 135 + 270 * pct)}" fill="none" stroke="${color}" stroke-width="10"
+            <path class="gauge-fill" d="${arcPath(cx, cy, r, 135, 135 + 270 * pct)}" fill="none" style="stroke:${color}" stroke-width="10" stroke-linecap="round"
                   stroke-dasharray="${fill} ${circ}" />
             <text class="gauge-value" x="60" y="64" text-anchor="middle">${value}${unit}</text>
             <text class="gauge-label" x="60" y="100" text-anchor="middle">${label}</text>
@@ -37,17 +37,17 @@
     async function render(slug) {
         const host = document.getElementById("specs-host");
         if (!host) return;
-        host.innerHTML = '<div class="text-muted">Loading…</div>';
+        host.innerHTML = '<div class="text-muted">Loading&hellip;</div>';
         try {
             const res = await fetch(`/api/metrics/${slug}`, { cache: "no-store" });
             const m = await res.json();
             const cpu = m.cpu_vcpus ?? 0, ram = m.ram_gb ?? 0, disk = m.disk_gb ?? 0;
             host.innerHTML = `<div class="row g-3">
-                ${gauge("CPU", cpu, 8, "", "#0d6efd")}
-                ${gauge("RAM", ram, 16, "GB", "#198754")}
-                ${gauge("Disk", disk, 100, "GB", "#fd7e14")}
+                ${gauge("CPU", cpu, 8, "", "var(--accent)")}
+                ${gauge("RAM", ram, 16, "GB", "var(--metric-alt)")}
+                ${gauge("Disk", disk, 100, "GB", "var(--metric-alt-2)")}
             </div>
-            <div class="small text-muted mt-2">Bars show configured capacity vs a 8 vCPU / 16 GB / 100 GB reference.
+            <div class="small text-faint mt-2">Bars show configured capacity vs an 8 vCPU / 16 GB / 100 GB reference.
             Live utilisation comes with the monitoring agent (Cat 7).</div>`;
         } catch (e) { host.innerHTML = `<div class="text-danger">Failed: ${e.message}</div>`; }
     }

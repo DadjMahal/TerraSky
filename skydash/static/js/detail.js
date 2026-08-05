@@ -6,14 +6,15 @@
 (function () {
     "use strict";
 
+    // Kept in sync with dashboard.js — see Documentation/FRONTEND_HANDBOOK.md.
     const STATUS_META = {
-        running: { cls: "bg-success", label: "Running" },
-        stopped: { cls: "bg-danger", label: "Stopped" },
-        starting: { cls: "bg-info text-dark", label: "Starting..." },
-        stopping: { cls: "bg-warning text-dark", label: "Stopping..." },
-        error: { cls: "bg-danger", label: "Error" },
-        unknown: { cls: "bg-secondary", label: "Unknown" },
-        loading: { cls: "bg-secondary", label: "Loading..." },
+        running: { cls: "status-running", label: "Running" },
+        stopped: { cls: "status-stopped", label: "Stopped" },
+        starting: { cls: "status-starting beacon-pulse", label: "Starting" },
+        stopping: { cls: "status-stopping beacon-pulse", label: "Stopping" },
+        error: { cls: "status-error", label: "Error" },
+        unknown: { cls: "status-unknown", label: "Unknown" },
+        loading: { cls: "status-loading", label: "Loading" },
     };
 
     const SLUG = window.SKYDASH_SLUG;
@@ -21,10 +22,19 @@
         if (window.SkyDashDashboard?.showToast) return window.SkyDashDashboard.showToast(msg, ok);
         const stack = document.getElementById("toast-stack");
         if (!stack) return;
-        stack.innerHTML = "";
+        const kind = ok ? "success" : "danger";
+        const icon = ok ? "bi-check-circle-fill" : "bi-exclamation-triangle-fill";
         const el = document.createElement("div");
-        el.className = "skydash-toast toast align-items-center text-white border-0 " + (ok ? "bg-dark" : "bg-danger");
-        el.innerHTML = `<div class="d-flex w-100"><div class="toast-body">${ok ? "✅" : "⛔"} ${String(msg).replace(/</g, "&lt;")}</div></div>`;
+        el.className = `skydash-toast toast-${kind}`;
+        el.style.setProperty("--toast-duration", "3500ms");
+        el.innerHTML =
+            `<div class="d-flex align-items-center gap-2 px-3 py-2">
+                <i class="bi ${icon}"></i>
+                <div class="flex-grow-1" style="font-size:var(--text-sm);">${String(msg).replace(/</g, "&lt;")}</div>
+                <button type="button" class="btn-close-toast" aria-label="Dismiss"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="toast-progress"></div>`;
+        el.querySelector(".btn-close-toast").addEventListener("click", () => el.remove());
         stack.appendChild(el);
         setTimeout(() => el.remove(), 3500);
     }
@@ -32,7 +42,11 @@
     function setBadge(status) {
         const m = STATUS_META[status] || STATUS_META.unknown;
         const el = document.getElementById("status-badge");
-        if (el) { el.className = `badge ${m.cls} status-badge`; el.textContent = m.label; el.dataset.status = status; }
+        if (el) {
+            el.className = `status-pill ${m.cls}`;
+            el.innerHTML = `<span class="beacon-dot"></span>${m.label}`;
+            el.dataset.status = status;
+        }
     }
 
     async function refreshStatus() {
@@ -119,7 +133,7 @@
             setStage(0, "done"); setStage(1, "active");
             const settled = await pollDetailStatus(targetState, () => {});
             setStage(1, "done");
-            if (settled) { setStage(2, "done"); showToast(`${SLUG} is now ${targetState.toUpperCase()} ✓`, true); }
+            if (settled) { setStage(2, "done"); showToast(`${SLUG} is now ${targetState.toUpperCase()}`, true); }
             else { showToast(`${SLUG}: action sent but status not yet confirmed`, false); }
         } catch (e) {
             showToast(`${action} request failed: ${e.message}`, false);
@@ -177,8 +191,8 @@
             const data = await res.json();
             if (!data.length) { list.innerHTML = '<div class="text-muted small">No custom domains mapped yet.</div>'; return; }
             list.innerHTML = data.map(m =>
-                `<div class="domain-row"><div><code>${m.domain}</code> → ${m.slug}</div>
-                 <button class="btn btn-sm btn-outline-danger" data-del="${m.domain}">✕</button></div>`).join("");
+                `<div class="domain-row"><div><code>${m.domain}</code> <i class="bi bi-arrow-right small text-faint"></i> ${m.slug}</div>
+                 <button class="btn btn-sm btn-outline-danger" data-del="${m.domain}" title="Remove mapping"><i class="bi bi-trash3"></i></button></div>`).join("");
             list.querySelectorAll("button[data-del]").forEach(b => b.addEventListener("click", async () => {
                 await fetch(`/api/domains?domain=${encodeURIComponent(b.dataset.del)}`, { method: "DELETE" });
                 showToast("Domain mapping removed", true);

@@ -44,6 +44,18 @@
 | 18 | Metrics charts for instance | ✅ done | Cline | Chart.js CPU/RAM/disk (+ live disk for Hermes); `/api/metrics`; `metrics-charts.js` (2026-08-04) |
 | 19 | Custom domain mapping UI | ✅ done | Cline | domain tab UI + CRUD via `/api/domains` persisted in config_store (2026-08-04) |
 
+> **2026-08-05 — full visual redesign applied on top of Categories 1 & 2.**
+> Every task above is still accurately `done` (the *features* Cline built —
+> theme toggle, region map, drag-drop, context menu, tabs, gauges, SSH
+> terminal, etc. — are all still present and functional). What changed is
+> purely visual: colors, typography, spacing, icons (emoji → Bootstrap
+> Icons), and a new shared token system. Owner: Claude (Anthropic). Not yet
+> deployed/click-tested — see `STATUS.md` § In Progress and
+> `skydash/docs/FRONTEND_HANDBOOK.md` for scope, rationale, and the
+> pre-deploy verification checklist. **Read the handbook before starting any
+> new task in Category 1 or 2**, or any future UI work — it's now the
+> authoritative frontend spec.
+
 ## Category 3 — Hermes Agent (15)
 
 | # | Task | Status | Owner | Result / Evidence |

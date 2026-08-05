@@ -1,0 +1,185 @@
+/* ============================================================================
+   SkyDash Design Tokens
+   Single source of truth for color, type, spacing, radius, shadow and motion.
+   Every other stylesheet reads FROM these variables — never hardcode a raw
+   color/size in a component file. See Documentation/FRONTEND_HANDBOOK.md.
+
+   Concept: "Sky"Dash instrumentation — a night-sky / day-sky pair of themes
+   with a signal-cyan accent and a status "beacon" system (see base.css).
+   ============================================================================ */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ---- Surfaces (deep atmosphere → elevated panel) ---- */
+  --void:        #080D18;
+  --surface:     #0F1729;
+  --surface-2:   #16203A;
+  --surface-3:   #1E2A4A;
+  --overlay:     rgba(5, 9, 18, 0.72);
+
+  /* ---- Borders ---- */
+  --border:        rgba(150, 170, 210, 0.14);
+  --border-strong: rgba(160, 180, 220, 0.28);
+
+  /* ---- Text ---- */
+  --text:       #EAEFF9;
+  --text-muted: #93A2C2;
+  --text-faint: #5B6A8C;
+  --text-on-accent: #051620;
+
+  /* ---- Signal accent (sky-cyan) ---- */
+  --accent:      #4FC8E8;
+  --accent-strong: #8CE3F5;
+  --accent-soft: rgba(79, 200, 232, 0.14);
+  --accent-soft-strong: rgba(79, 200, 232, 0.26);
+
+  /* ---- Secondary metric color (RAM gauges etc.) — distinct from status hues ---- */
+  --metric-alt: #A78BFA;
+  --metric-alt-soft: rgba(167, 139, 250, 0.16);
+  --metric-alt-2: #E8A33D;
+
+  /* ---- Status beacons ---- */
+  --status-running:  #34D399;
+  --status-running-soft: rgba(52, 211, 153, 0.16);
+  --status-running-border: rgba(52, 211, 153, 0.32);
+  --status-stopped:  #8592B0;
+  --status-stopped-soft: rgba(133, 146, 176, 0.16);
+  --status-stopped-border: rgba(133, 146, 176, 0.32);
+  --status-starting: #FBBF24;
+  --status-starting-soft: rgba(251, 191, 36, 0.16);
+  --status-starting-border: rgba(251, 191, 36, 0.32);
+  --status-stopping: #FB923C;
+  --status-stopping-soft: rgba(251, 146, 60, 0.16);
+  --status-stopping-border: rgba(251, 146, 60, 0.32);
+  --status-error:    #FB7185;
+  --status-error-soft: rgba(251, 113, 133, 0.16);
+  --status-error-border: rgba(251, 113, 133, 0.32);
+  --status-unknown:  #6B7A9C;
+  --status-unknown-soft: rgba(107, 122, 156, 0.16);
+  --status-unknown-border: rgba(107, 122, 156, 0.32);
+
+  /* ---- Provider identity (matches map markers — do not change independently) ---- */
+  --provider-aws:     #FF9900;
+  --provider-azure:   #0078D4;
+  --provider-oracle:  #F80000;
+  --provider-alibaba: #FF6A00;
+
+  /* ---- Shadow ---- */
+  --shadow-sm: 0 1px 2px rgba(2, 5, 12, 0.4);
+  --shadow-md: 0 12px 32px -8px rgba(2, 5, 12, 0.55);
+  --shadow-lg: 0 24px 64px -12px rgba(2, 5, 12, 0.6);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+  --scan-line: rgba(150, 170, 210, 0.05);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --void:      #EEF2F9;
+  --surface:   #FFFFFF;
+  --surface-2: #F3F6FB;
+  --surface-3: #E7ECF6;
+  --overlay:   rgba(20, 28, 48, 0.45);
+
+  --border:        rgba(30, 44, 82, 0.11);
+  --border-strong: rgba(30, 44, 82, 0.22);
+
+  --text:       #101A33;
+  --text-muted: #4C5A78;
+  --text-faint: #7C89A6;
+  --text-on-accent: #052430;
+
+  --accent:      #0B8CAD;
+  --accent-strong: #086E88;
+  --accent-soft: rgba(11, 140, 173, 0.10);
+  --accent-soft-strong: rgba(11, 140, 173, 0.18);
+
+  --metric-alt: #7C5CE0;
+  --metric-alt-soft: rgba(124, 92, 224, 0.12);
+  --metric-alt-2: #C97A1A;
+
+  --status-running:  #0F9D6E;
+  --status-running-soft: rgba(15, 157, 110, 0.12);
+  --status-running-border: rgba(15, 157, 110, 0.30);
+  --status-stopped:  #64708C;
+  --status-stopped-soft: rgba(100, 112, 140, 0.12);
+  --status-stopped-border: rgba(100, 112, 140, 0.30);
+  --status-starting: #B9790A;
+  --status-starting-soft: rgba(185, 121, 10, 0.13);
+  --status-starting-border: rgba(185, 121, 10, 0.30);
+  --status-stopping: #C2590C;
+  --status-stopping-soft: rgba(194, 89, 12, 0.13);
+  --status-stopping-border: rgba(194, 89, 12, 0.30);
+  --status-error:    #D53F5C;
+  --status-error-soft: rgba(213, 63, 92, 0.12);
+  --status-error-border: rgba(213, 63, 92, 0.30);
+  --status-unknown:  #66738F;
+  --status-unknown-soft: rgba(102, 115, 143, 0.12);
+  --status-unknown-border: rgba(102, 115, 143, 0.30);
+
+  --provider-aws:     #C46F00;
+  --provider-azure:   #0078D4;
+  --provider-oracle:  #D2232A;
+  --provider-alibaba: #D45900;
+
+  --shadow-sm: 0 1px 2px rgba(20, 30, 60, 0.06);
+  --shadow-md: 0 12px 28px -10px rgba(20, 30, 60, 0.16);
+  --shadow-lg: 0 24px 56px -12px rgba(20, 30, 60, 0.20);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  --scan-line: rgba(30, 44, 82, 0.035);
+}
+
+:root {
+  /* ---- Type families ----
+     display: brand + headings, used with restraint
+     body:    interface chrome — labels, buttons, paragraphs
+     mono:    every technical/tabular value — IPs, ids, status codes, logs   */
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-body:    "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+
+  /* ---- Type scale ---- */
+  --text-2xs: 0.6875rem;   /* 11px  eyebrows, micro-labels */
+  --text-xs:  0.75rem;     /* 12px  meta, kv-labels */
+  --text-sm:  0.8125rem;   /* 13px  secondary UI, table cells */
+  --text-base:0.9375rem;   /* 15px  body default */
+  --text-md:  1.0625rem;   /* 17px  card titles */
+  --text-lg:  1.375rem;    /* 22px  section headings */
+  --text-xl:  1.75rem;     /* 28px  page titles */
+  --text-2xl: 2.5rem;      /* 40px  hero / login brand */
+
+  /* ---- Spacing scale (4px base) ---- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* ---- Radius ---- */
+  --radius-sm: 0.4rem;
+  --radius-md: 0.65rem;
+  --radius-lg: 1rem;
+  --radius-pill: 999px;
+
+  /* ---- Motion ---- */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-base: 220ms;
+  --duration-slow: 420ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,74 +1,151 @@
 /* ============================================================================
-   SkyDash Detail page styles — Category 2 UI/UX (#11 tabs, #12 loader,
-   #13 specs gauges, #14 topology, #15 timeline, #16 terminal, #17 log viewer,
-   #18 charts, #19 domains)
+   SkyDash Detail-page styles — action loader, log viewer, SSH terminal chrome,
+   domain mapping list, and mount points for specs/topology/timeline/metrics.
+   Reads tokens from tokens.css / base.css. Loaded globally via base.html.
    ============================================================================ */
 
-/* ---- #11 Tabs ----------------------------------------------------------- */
-.detail-tabs .nav-link {
-    color: var(--text-secondary);
-    border-radius: 0.6rem 0.6rem 0 0;
-    transition: all 0.2s ease;
-}
-.detail-tabs .nav-link.active {
-    color: var(--text-primary);
-    font-weight: 600;
-}
-.tab-pane { animation: tabFade 0.35s ease; }
-@keyframes tabFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.detail-tabs { flex-wrap: nowrap; }
+.detail-tabs::-webkit-scrollbar { height: 4px; }
 
-/* ---- #12 Action progress loader ---------------------------------------- */
-.action-progress { display: none; }
-.action-progress.show { display: block; }
-.action-progress .stage { display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0; opacity: 0.4; transition: opacity 0.3s; }
-.action-progress .stage.done { opacity: 1; }
-.action-progress .stage.active { opacity: 1; font-weight: 600; }
-.action-progress .stage .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-secondary); }
-.action-progress .stage.done .dot { background: #198754; }
-.action-progress .stage.active .dot { background: #0d6efd; animation: pulse 1s infinite; }
-@keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.4); } }
+/* ---- Staged action progress loader ------------------------------------------- */
+#action-progress {
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    max-width: 420px;
+    margin-top: 0.5rem;
+}
+#action-progress.show { display: flex; }
+#action-progress .stage {
+    display: flex; align-items: center; gap: 0.75rem;
+    position: relative;
+    padding: 0.5rem 0 0.5rem 0;
+    color: var(--text-faint);
+    font-size: var(--text-sm);
+    transition: color var(--duration-base) var(--ease);
+}
+#action-progress .stage::before {
+    content: "";
+    position: absolute;
+    left: 6px; top: 26px; bottom: -6px;
+    width: 1px;
+    background: var(--border-strong);
+}
+#action-progress .stage:last-child::before { display: none; }
+#action-progress .stage .dot {
+    width: 13px; height: 13px; border-radius: 50%;
+    background: var(--surface-3);
+    border: 1px solid var(--border-strong);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    transition: all var(--duration-base) var(--ease);
+}
+#action-progress .stage.active .dot {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    animation: stage-pulse 1.3s ease-in-out infinite;
+}
+#action-progress .stage.active .stage-text { color: var(--text); font-weight: 500; }
+#action-progress .stage.done .dot { background: var(--status-running); border-color: var(--status-running); }
+#action-progress .stage.done .dot::after {
+    content: "\2713";
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: #052318; font-weight: 700;
+}
+#action-progress .stage.done .stage-text { color: var(--status-running); }
+@keyframes stage-pulse {
+    0%, 100% { box-shadow: 0 0 0 3px var(--accent-soft); }
+    50% { box-shadow: 0 0 0 6px transparent; }
+}
 
-/* ---- #13 Specs gauges --------------------------------------------------- */
+/* ---- Log viewer ---------------------------------------------------------------
+   Always dark, like a terminal, regardless of site theme — matches developer
+   expectations for log/code panes and keeps ANSI-ish level colors legible. */
+.log-viewer {
+    background: #0A0F1C;
+    border: 1px solid rgba(150, 170, 210, 0.14);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 0;
+    max-height: 420px;
+    overflow: auto;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: #C7D2E8;
+}
+.log-viewer .lv-line {
+    padding: 0.15rem 1rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border-left: 2px solid transparent;
+}
+.log-viewer .lv-error   { color: #FCA5B1; background: rgba(251, 113, 133, 0.09); border-left-color: #FB7185; }
+.log-viewer .lv-warning { color: #FDDDA0; background: rgba(251, 191, 36, 0.08);  border-left-color: #FBBF24; }
+.log-viewer .lv-info    { color: #8FE0F2; background: rgba(79, 200, 232, 0.07);  border-left-color: #4FC8E8; }
+
+/* ---- SSH terminal --------------------------------------------------------------- */
+.ssh-banner {
+    display: flex; align-items: center; gap: 0.6rem;
+    font-family: var(--font-mono); font-size: var(--text-xs);
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;
+}
+#ssh-host, #ssh-terminal {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    min-height: 320px;
+    background: #0A0F1C;
+}
+
+/* ---- Domain mapping list --------------------------------------------------------- */
+.domain-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 0.5rem;
+    font-size: var(--text-sm);
+    background: var(--surface-2);
+}
+.domain-row code { font-family: var(--font-mono); color: var(--text); }
+
+/* ---- Mount points for specs / topology / timeline / metrics modules -------------- */
+#specs-host, #topology-host, #timeline-host, #metrics-host {
+    min-height: 120px;
+}
+#specs-host svg, #topology-host svg, #timeline-host svg { max-width: 100%; height: auto; }
+#metrics-host canvas { max-width: 100%; }
+
+/* ---- Hardware spec gauges (SVG, specs-visualization.js) --------------------------- */
 .spec-gauge { text-align: center; }
-.spec-gauge svg { max-width: 140px; }
-.spec-gauge .gauge-track { stroke: rgba(127,127,127,0.2); }
-.spec-gauge .gauge-fill { transition: stroke-dashoffset 1s ease; stroke-linecap: round; }
-.spec-gauge .gauge-label { font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; }
-.spec-gauge .gauge-value { font-size: 1.1rem; font-weight: 700; fill: var(--text-primary); }
+.spec-gauge svg { max-width: 150px; }
+.spec-gauge .gauge-track { stroke: var(--surface-3); }
+.spec-gauge .gauge-fill { transition: stroke-dasharray 0.9s var(--ease); }
+.spec-gauge .gauge-label {
+    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.06em;
+    fill: var(--text-faint); text-transform: uppercase;
+}
+.spec-gauge .gauge-value { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; fill: var(--text); }
+.chart-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.75rem; }
 
-/* ---- #14 Network topology ----------------------------------------------- */
-.topology-svg { width: 100%; max-width: 640px; height: auto; }
-.topology-svg .node { fill: var(--bg-card); stroke: #0d6efd; stroke-width: 2; }
-.topology-svg .node-label { font-size: 11px; fill: var(--text-primary); }
-.topology-svg .link { stroke: #6c757d; stroke-width: 2; stroke-dasharray: 5 4; }
+/* ---- Network topology diagram (SVG, topology.js) ----------------------------------- */
+.topology-svg { width: 100%; max-width: 660px; height: auto; }
+.topology-svg .node { fill: var(--surface-2); stroke: var(--accent); stroke-width: 2; }
+.topology-svg .node-primary { fill: var(--accent-soft); stroke: var(--accent-strong); stroke-width: 2.5; }
+.topology-svg .node-label { font-family: var(--font-mono); font-size: 11px; fill: var(--text); }
+.topology-svg .node-label-title { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; }
+.topology-svg .node-label-ip { fill: var(--text-muted); font-size: 10px; }
+.topology-svg .link { stroke: var(--border-strong); stroke-width: 2; stroke-dasharray: 5 4; }
 
-/* ---- #15 Status timeline ------------------------------------------------ */
-.timeline { position: relative; padding: 1rem 0; }
-.timeline .tl-line { position: absolute; left: 0; right: 0; top: 50%; height: 4px; background: rgba(127,127,127,0.25); border-radius: 2px; }
-.timeline .tl-track { display: flex; justify-content: space-between; position: relative; }
-.timeline .tl-event { text-align: center; position: relative; }
-.timeline .tl-event .dot { width: 14px; height: 14px; border-radius: 50%; margin: 0 auto; border: 2px solid #fff; box-shadow: 0 0 0 2px rgba(0,0,0,0.1); }
-.timeline .tl-event .tl-time { font-size: 0.68rem; color: var(--text-secondary); margin-top: 0.3rem; }
-
-/* ---- #16 SSH terminal --------------------------------------------------- */
-#ssh-terminal { background: #000; color: #0f0; border-radius: 0.5rem; padding: 0.5rem; min-height: 360px; }
-#ssh-terminal .xterm { padding: 0.3rem; }
-.ssh-banner { font-size: 0.8rem; color: var(--text-secondary); }
-
-/* ---- #17 Log viewer ----------------------------------------------------- */
-.log-viewer { background: #0d1117; color: #c9d1d9; border-radius: 0.5rem; padding: 0.6rem; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.82rem; max-height: 420px; overflow: auto; }
-.log-viewer .lv-line { white-space: pre-wrap; word-break: break-word; padding: 0.05rem 0.2rem; border-radius: 0.2rem; }
-.log-viewer .lv-error { background: rgba(248,81,73,0.15); color: #ff7b72; border-left: 3px solid #f85149; }
-.log-viewer .lv-warning { background: rgba(187,128,9,0.15); color: #e3b341; border-left: 3px solid #d29922; }
-.log-viewer .lv-info { background: rgba(56,139,253,0.12); color: #79c0ff; border-left: 3px solid #388bfd; }
-.log-viewer .tok-keyword { color: #ff7b72; }
-.log-viewer .tok-string { color: #a5d6ff; }
-.log-viewer .tok-number { color: #79c0ff; }
-
-/* ---- #18 Charts --------------------------------------------------------- */
-.chart-card { padding: 0.5rem; }
-.chart-card canvas { max-height: 220px; }
-
-/* ---- #19 Domains -------------------------------------------------------- */
-.domain-row { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; border-bottom: 1px solid rgba(127,127,127,0.15); }
-.domain-row code { color: var(--text-primary); }
+/* ---- Status timeline (status-timeline.js) ------------------------------------------- */
+.timeline { position: relative; padding: 1.5rem 0.5rem 0.5rem; overflow-x: auto; }
+.timeline .tl-line { position: absolute; left: 0.5rem; right: 0.5rem; top: calc(1.5rem + 7px); height: 2px; background: var(--border-strong); border-radius: 2px; }
+.timeline .tl-track { display: flex; justify-content: space-between; gap: 1rem; position: relative; min-width: 480px; }
+.timeline .tl-event { text-align: center; position: relative; flex: 1; }
+.timeline .tl-event .dot {
+    width: 14px; height: 14px; border-radius: 50%; margin: 0 auto;
+    border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--border-strong);
+}
+.timeline .tl-event .tl-time { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-faint); margin-top: 0.4rem; }

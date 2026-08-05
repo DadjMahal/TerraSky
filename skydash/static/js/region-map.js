@@ -71,7 +71,7 @@
                         const card = document.querySelector(`.card-col[data-slug="${inst.slug}"]`);
                         if (card) {
                             card.scrollIntoView({ behavior: "smooth", block: "center" });
-                            card.style.boxShadow = "0 0 0 3px #0d6efd";
+                            card.style.boxShadow = "0 0 0 3px var(--accent)";
                             setTimeout(() => { card.style.boxShadow = ""; }, 1500);
                         }
                     });

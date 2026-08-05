@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}404 — Page Not Found | {{ site_name }}{% endblock %}
+{% block title %}404 &mdash; Page Not Found | {{ site_name }}{% endblock %}
 {% block content %}
 <div class="d-flex align-items-center justify-content-center" style="min-height: 60vh;">
-    <div class="content-card p-5 text-center" style="max-width: 500px;">
-        <div style="font-size: 4rem; margin-bottom: 1rem;">🔍</div>
-        <h1 class="display-4 fw-bold text-danger">404</h1>
-        <h3 class="mb-3">Page Not Found</h3>
-        <p class="text-muted mb-4">Oops! The page you're looking for doesn't exist or has been moved.</p>
-        <a href="/" class="btn btn-primary btn-lg">🏠 Back to Dashboard</a>
+    <div class="panel state-panel">
+        <div class="state-icon"><i class="bi bi-signpost-2"></i></div>
+        <div class="state-code">Error 404</div>
+        <h1>Page not found</h1>
+        <p>The page you're looking for doesn't exist or has been moved.</p>
+        <a href="/" class="btn btn-primary"><i class="bi bi-house"></i> Back to dashboard</a>
     </div>
 </div>
 {% endblock %}

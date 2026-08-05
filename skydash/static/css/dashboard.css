@@ -1,10 +1,14 @@
 /* ============================================================================
-   SkyDash Dashboard styles — Category 1 UI/UX (#4 region map, #5 filters,
-   #6 drag-drop, #7 CPU/RAM bars, #8 toasts, #9 context menu, #10 pagination)
-   Loaded from base.html via {{ url_for('static', filename='css/dashboard.css') }}
+   SkyDash Dashboard styles — filter bar, instance card grid, region map,
+   drag-drop, context menu, toasts, pagination.
+   Reads tokens from tokens.css / base.css. Loaded globally via base.html.
    ============================================================================ */
 
-/* ---- #8 Toast stack ------------------------------------------------------ */
+/* ---- Toolbar hint ---------------------------------------------------------- */
+.toolbar-hint { color: var(--text-faint); font-size: var(--text-xs); }
+.toolbar-btn { white-space: nowrap; }
+
+/* ---- Toast stack ------------------------------------------------------------ */
 #toast-stack {
     position: fixed;
     top: 1rem;
@@ -18,20 +22,36 @@
 }
 .skydash-toast {
     pointer-events: auto;
-    border-radius: 0.75rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    box-shadow: var(--shadow-lg);
     overflow: hidden;
-    animation: toast-in 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
-    font-size: 0.9rem;
+    animation: toast-in var(--duration-slow) cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+    font-size: var(--text-sm);
+    color: var(--text);
 }
-.skydash-toast.hide-anim { animation: toast-out 0.4s ease forwards; }
+.skydash-toast.hide-anim { animation: toast-out var(--duration-base) ease forwards; }
 .skydash-toast .toast-progress {
     height: 3px;
     width: 100%;
-    background: rgba(255, 255, 255, 0.55);
+    background: var(--accent);
+    opacity: .6;
     transform-origin: left;
     animation: toast-progress var(--toast-duration, 3.5s) linear forwards;
 }
+.skydash-toast.toast-success .toast-progress { background: var(--status-running); }
+.skydash-toast.toast-danger  .toast-progress,
+.skydash-toast.toast-error   .toast-progress { background: var(--status-error); }
+.skydash-toast.toast-warning .toast-progress { background: var(--status-starting); }
+.skydash-toast .bi-check-circle-fill { color: var(--status-running); }
+.skydash-toast .bi-exclamation-triangle-fill { color: var(--status-error); }
+.skydash-toast .btn-close-toast {
+    border: 0; background: transparent; color: var(--text-faint);
+    line-height: 1; padding: 0.15rem; border-radius: var(--radius-sm);
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.skydash-toast .btn-close-toast:hover { color: var(--text); background: var(--surface-3); }
 @keyframes toast-in {
     from { opacity: 0; transform: translateX(120%); }
     to   { opacity: 1; transform: translateX(0); }
@@ -45,83 +65,133 @@
     to   { transform: scaleX(0); }
 }
 
-/* ---- #7 CPU/RAM progress bars ------------------------------------------- */
-.metric-bar { margin-bottom: 0.35rem; }
+/* ---- CPU/RAM progress bars --------------------------------------------------- */
+.metric-bar { margin-bottom: 0.5rem; }
 .metric-bar .metric-label {
     display: flex; justify-content: space-between;
-    font-size: 0.72rem; color: var(--text-secondary);
-    text-transform: uppercase; letter-spacing: 0.03em;
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs); color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 0.25rem;
 }
-.metric-bar .progress { height: 0.45rem; background: rgba(127, 127, 127, 0.2); }
-.metric-bar .progress-bar { transition: width 0.8s ease; }
+.metric-bar .progress { height: 5px; background: var(--surface-3); border-radius: var(--radius-pill); overflow: hidden; }
+.metric-bar .progress-bar { transition: width 0.8s var(--ease); border-radius: var(--radius-pill); }
+.metric-bar .progress-bar.metric-cpu { background: var(--accent); }
+.metric-bar .progress-bar.metric-ram { background: var(--metric-alt); }
 
-/* ---- #4 Region map ------------------------------------------------------- */
-#region-map-wrap { overflow: hidden; border-radius: 1rem; }
-#region-map { height: 380px; width: 100%; background: #0a0a12; z-index: 0; }
-[data-theme="light"] #region-map { background: #dfe8f1; }
-#map-error { color: var(--text-secondary); }
+/* ---- Region map --------------------------------------------------------------- */
+#region-map-wrap { overflow: hidden; }
+#region-map { height: 380px; width: 100%; background: var(--void); z-index: 0; border-radius: var(--radius-md); }
+#map-error { color: var(--text-muted); }
 .region-marker { display: flex; align-items: center; justify-content: center; }
 
-/* ---- #5 Filter chip / tag multi-select ---------------------------------- */
-.tag-dropdown {
-    position: relative;
-    width: 100%;
-}
+/* ---- Tag multi-select dropdown ------------------------------------------------ */
+.tag-dropdown { position: relative; width: 100%; }
 .tag-dropdown .tag-drop-label {
     width: 100%; text-align: left;
-    background: var(--bg-card); border: 1px solid rgba(127,127,127,0.3);
-    color: var(--text-primary); border-radius: 0.375rem;
+    display: inline-flex; align-items: center; justify-content: space-between;
 }
 .tag-drop-panel {
     display: none;
-    position: absolute; top: 100%; left: 0; right: 0;
-    z-index: 1050; background: var(--bg-card); border: 1px solid rgba(127,127,127,0.3);
-    border-radius: 0.5rem; padding: 0.5rem; max-height: 220px; overflow: auto;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+    min-width: 220px;
+    z-index: 1050; background: var(--surface-2); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md); padding: 0.6rem; max-height: 240px; overflow: auto;
+    box-shadow: var(--shadow-lg);
 }
 .tag-drop-panel.open { display: block; }
-.tag-drop-panel .form-check { padding-left: 1.6rem; }
+.tag-drop-panel .form-check { padding-left: 1.7rem; margin-bottom: .15rem; }
 .active-filter-count {
-    display: inline-block; min-width: 1.1rem; text-align: center;
-    background: #0d6efd; color: #fff; border-radius: 0.6rem; font-size: 0.7rem;
-    margin-left: 0.35rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.15rem; height: 1.15rem; text-align: center;
+    background: var(--accent); color: var(--text-on-accent);
+    border-radius: var(--radius-pill); font-family: var(--font-mono); font-size: 0.65rem;
+    margin-left: 0.4rem; font-weight: 600;
 }
 
-/* ---- #6 Drag & drop ------------------------------------------------------ */
-.card-col.dragging { opacity: 0.5; transform: scale(0.98); }
-.card-col.drag-over { box-shadow: 0 0 0 2px #0d6efd inset; border-radius: 1rem; }
-#cards.sortable-active .card-col { cursor: grab; }
-#cards.sortable-active .card-col:active { cursor: grabbing; }
+/* ---- Drag & drop reordering ---------------------------------------------------- */
+.card-col.dragging { opacity: 0.45; transform: scale(0.98); }
+.card-col.drag-over .instance-card { box-shadow: 0 0 0 2px var(--accent) inset, var(--shadow-md); }
+#cards.sortable-active .card-header-drag { cursor: grab; }
+#cards.sortable-active .card-col:active .card-header-drag { cursor: grabbing; }
 
-/* ---- #9 Context menu ----------------------------------------------------- */
+/* ---- Instance card -------------------------------------------------------------- */
+.instance-card {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform var(--duration-base) var(--ease), border-color var(--duration-base) var(--ease), box-shadow var(--duration-base) var(--ease);
+}
+.instance-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-strong);
+}
+.instance-strip { height: 3px; width: 100%; flex-shrink: 0; }
+.strip-aws     { background: var(--provider-aws); }
+.strip-azure   { background: var(--provider-azure); }
+.strip-oracle  { background: var(--provider-oracle); }
+.strip-alibaba { background: var(--provider-alibaba); }
+.strip-default { background: var(--border-strong); }
+
+.instance-card .card-header-drag {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+}
+.instance-card .card-name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: var(--text-md);
+    color: var(--text);
+}
+.instance-card .card-name:hover { color: var(--accent-strong); }
+.instance-card .card-body { padding: 0.9rem; flex: 1; }
+.instance-card .card-footer-actions {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.6rem 0.9rem;
+    border-top: 1px solid var(--border);
+    background: transparent;
+}
+.instance-card .kv-grid > div { margin-bottom: 0.65rem; }
+.instance-card code { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--text); background: none; padding: 0; }
+
+/* ---- Context menu ----------------------------------------------------------------- */
 #context-menu {
-    display: none; position: fixed; z-index: 2000; min-width: 180px;
-    background: var(--bg-card); color: var(--text-primary);
-    border: 1px solid rgba(127,127,127,0.35); border-radius: 0.6rem;
-    box-shadow: 0 12px 35px rgba(0,0,0,0.35); padding: 0.3rem;
-    animation: ctx-in 0.15s ease;
+    display: none; position: fixed; z-index: 2000; min-width: 200px;
+    background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg); padding: 0.35rem;
+    animation: ctx-in 0.15s var(--ease);
+    font-family: var(--font-body);
 }
 #context-menu.open { display: block; }
 #context-menu .ctx-head {
-    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
-    color: var(--text-secondary); padding: 0.35rem 0.6rem; border-bottom: 1px solid rgba(127,127,127,0.2);
-    margin-bottom: 0.2rem;
+    display: flex; align-items: center; gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-faint); padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border);
+    margin-bottom: 0.25rem;
 }
 #context-menu button {
-    display: block; width: 100%; text-align: left; border: 0; background: transparent;
-    color: var(--text-primary); padding: 0.4rem 0.6rem; border-radius: 0.35rem; font-size: 0.86rem;
+    display: flex; align-items: center; gap: 0.5rem;
+    width: 100%; text-align: left; border: 0; background: transparent;
+    color: var(--text); padding: 0.45rem 0.6rem; border-radius: var(--radius-sm); font-size: var(--text-sm);
+    transition: background var(--duration-fast) var(--ease);
 }
-#context-menu button:hover { background: rgba(13, 110, 253, 0.15); }
-#context-menu button.danger { color: #dc3545; }
-#context-menu hr { margin: 0.25rem 0; border-color: rgba(127,127,127,0.2); }
-@keyframes ctx-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+#context-menu button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent-strong); }
+#context-menu button:disabled { opacity: 0.35; }
+#context-menu button.danger:hover:not(:disabled) { background: var(--status-error-soft); color: var(--status-error); }
+#context-menu hr { margin: 0.3rem 0; border-color: var(--border); }
+#context-menu a.btn { color: var(--text-muted) !important; display: flex; align-items: center; gap: .5rem; }
+#context-menu a.btn:hover { background: var(--surface-3); color: var(--text) !important; }
+@keyframes ctx-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
 
-/* ---- #10 Pagination / infinite scroll ----------------------------------- */
+/* ---- Pagination / infinite scroll -------------------------------------------------- */
 #scroll-sentinel { height: 1px; }
-.pagination-controls { display: flex; justify-content: center; gap: 0.75rem; margin: 1rem 0; }
-.card-col.hidden { display: none !important; }
-.fade-in { animation: cardFadeIn 0.5s ease var(--delay, 0s) both; }
+.pagination-controls { display: flex; justify-content: center; align-items: center; gap: 0.9rem; margin: 1.5rem 0; }
+.card-col.hidden,
+.card-col.hidden-by-page { display: none !important; }
+.fade-in { animation: cardFadeIn 0.5s var(--ease) var(--delay, 0s) both; }
 @keyframes cardFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-
-/* ---- Map / filter toolbar buttons --------------------------------------- */
-.toolbar-btn { white-space: nowrap; }

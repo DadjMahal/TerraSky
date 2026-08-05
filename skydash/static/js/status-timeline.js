@@ -6,14 +6,14 @@
     "use strict";
 
     const COLOR = {
-        running: "#198754", stopped: "#dc3545", starting: "#0dcaf0",
-        stopping: "#ffc107", error: "#dc3545", unknown: "#6c757d",
+        running: "var(--status-running)", stopped: "var(--status-stopped)", starting: "var(--status-starting)",
+        stopping: "var(--status-stopping)", error: "var(--status-error)", unknown: "var(--status-unknown)",
     };
 
     async function render(slug) {
         const host = document.getElementById("timeline-host");
         if (!host) return;
-        host.innerHTML = '<div class="text-muted">Loading…</div>';
+        host.innerHTML = '<div class="text-muted">Loading&hellip;</div>';
         try {
             const res = await fetch(`/api/status-history/${slug}`, { cache: "no-store" });
             const data = await res.json();
@@ -26,7 +26,7 @@
                 rows.map(e => {
                     const t = new Date((e.ts || 0) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     const c = COLOR[e.status] || COLOR.unknown;
-                    return `<div class="tl-event"><div class="dot" style="background:${c}"></div><div class="tl-time">${t}</div><div class="small">${e.status}</div></div>`;
+                    return `<div class="tl-event"><div class="dot" style="background:${c}"></div><div class="tl-time">${t}</div><div class="small text-capitalize">${e.status}</div></div>`;
                 }).join("") + `</div></div>`;
         } catch (e) { host.innerHTML = `<div class="text-danger">Failed: ${e.message}</div>`; }
     }
