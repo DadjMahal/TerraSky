@@ -76,6 +76,14 @@
                 <div class="col-md-2"><label class="form-label">Type</label><input type="text" name="instance_type" class="form-control form-control-sm" placeholder="t3.micro"></div>
                 <div class="col-md-1"><button type="submit" class="btn btn-success btn-sm w-100" title="Add instance"><i class="bi bi-plus-lg"></i></button></div>
             </form>
+            <hr>
+            <h2 class="h6 text-uppercase eyebrow mb-3">Import unmanaged instances (§14)</h2>
+            <form method="POST" action="/admin/import" class="row g-2 align-items-end">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="col-md-4"><label class="form-label">Provider (optional)</label><select name="provider" class="form-select form-select-sm"><option value="">All providers</option><option value="aws">AWS</option><option value="azure">Azure</option><option value="oracle">Oracle</option><option value="alibaba">Alibaba</option><option value="digitalocean">DigitalOcean</option></select></div>
+                <div class="col-md-5"><span class="small text-faint">Idempotent import of inventory servers not yet in the platform. Imported resources are <strong>read-only</strong> (§106) until claimed.</span></div>
+                <div class="col-md-3"><button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-download"></i> Import inventory</button></div>
+            </form>
             {% if custom_instances %}
             <hr><h2 class="h6 text-uppercase eyebrow mb-2">Custom instances</h2>
             <table class="table table-sm"><thead><tr><th>Name</th><th>Provider</th><th>ID</th><th></th></tr></thead><tbody>

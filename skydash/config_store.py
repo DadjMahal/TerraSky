@@ -194,7 +194,7 @@ def get_instance_override(slug: str) -> dict:
 
 def add_custom_instance(provider: str, instance_id: str, name: str,
                          region: str = "", instance_type: str = "",
-                         description: str = "") -> dict:
+                         description: str = "", readonly: bool = False) -> dict:
     """Add a custom (manually entered) instance."""
     config = load_config()
     if "custom_instances" not in config:
@@ -206,6 +206,7 @@ def add_custom_instance(provider: str, instance_id: str, name: str,
         "region": region,
         "instance_type": instance_type,
         "description": description,
+        "readonly": readonly,  # §106 read-only import marker
         "slug": f"{provider}-{name.lower().replace(' ', '-')}",
     }
     existing = [i for i in config["custom_instances"] if i["instance_id"] == instance_id]

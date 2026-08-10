@@ -176,6 +176,18 @@ Wiring: `@audited` + `@rbac.require_role(admin)` on mutating admin/instance rout
 Flask-runtime + deploy verification still PENDING (no Flask here / no droplet redeploy).
 See `docs/security-governance-iter8.md` for the BLOCKED matrix (Vault/MFA/PostgreSQL/OPA = Iter 10 or user decision).
 
+## 🔁 Iteration 3 — Infrastructure Lifecycle (delivered, unit-tested)
+
+| Module | § | Verified |
+|---|---|---|
+| `drift.py` | §15 desired-vs-live comparison | compare/detect/summarize tests PASS; `GET /api/v1/drift` (unavailable providers honestly report "unverifiable") |
+| `dependencies.py` | §88 resource relationships via tags | graph/dependents/topology tests PASS; `GET /api/v1/topology` |
+| `scheduler.py` | §91 in-process stdlib scheduler | debounce test PASS; opt-in via `SKYDASH_SCHEDULER=1` (refreshes status cache) |
+| `import_engine.py` | §14/§106 idempotent read-only import | wired `/admin/import` (audited, admin-gated); config_store `readonly` flag |
+
+Live drift sweep + import execution need cloud creds (deploy) — logic is unit-tested here.
+Tests: `python3 skydash/tests/test_lifecycle.py` (5/5 PASS; import_engine guarded on werkzeug).
+
 ## ⚙️ How to refresh this
 
 ```bash

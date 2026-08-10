@@ -252,6 +252,30 @@ def v1_providers():
     return _envelop({"providers": rows})
 
 
+@api_v1.route("/drift")
+@login_required
+def v1_drift():
+    """GET /api/v1/drift — desired (tfstate) vs live provider state (§15).
+
+    Providers without credentials here report ``unverifiable`` (honest
+    graceful degradation) rather than guessing at drift.
+    """
+    from drift import detect_instances, summarize
+
+    results = detect_instances(get_instances())
+    return _envelop({"instances": results, "summary": summarize(results)})
+
+
+@api_v1.route("/topology")
+@login_required
+def v1_topology():
+    """GET /api/v1/topology — resource relationship graph from tags (§88)."""
+    from dependencies import as_topology, build_graph
+
+    graph = build_graph(get_instances())
+    return _envelop(as_topology(graph))
+
+
 @api_v1.route("/openapi.json")
 @login_required
 def v1_openapi_json():
@@ -312,6 +336,15 @@ def _cache_get(slug: str):
 def _cache_put(slug: str, data: dict):
     with _cache_lock:
         _status_cache[slug] = (time.time(), data)
+
+
+# §91 Scheduler — opt-in periodic maintenance. Off by default so existing
+# single-process behavior is unchanged; enable via SKYDASH_SCHEDULER=1.
+if os.environ.get("SKYDASH_SCHEDULER", "").strip() == "1":
+    import scheduler as _skd
+
+    _skd.register("refresh-status-cache", interval_seconds=_STATUS_TTL, fn=_status_cache.clear)
+    _skd.start()
 
 
 def _live_status(instance) -> dict:
@@ -754,6 +787,27 @@ def hermes_test_connection(slug: str):
 
 
 # --- Admin routes ---
+
+@app.route("/admin/import", methods=["POST"])
+@auth_limiter.limit("10 per hour")
+@require_role(rbac.ADMIN)
+@login_required
+@audit_system.audited(action="import.run")
+def admin_import():
+    """Import unmanaged instances from the static inventory (§14, §106).
+
+    Idempotent (existing instance_ids are skipped) and read-only by default.
+    """
+    from import_engine import import_inventory
+
+    provider = request.form.get("provider", "").strip() or None
+    res = import_inventory(provider=provider, readonly=True)
+    flash(
+        f"Import: {res['imported']} added, {res['skipped']} skipped, {res['errors']} errors"
+        + ("." if provider is None else f" (provider={provider})."),
+        "success" if res["errors"] == 0 else "warning",
+    )
+    return redirect(url_for("admin_panel"))
 
 @app.route("/admin")
 @require_role(rbac.ADMIN)
