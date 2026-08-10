@@ -32,26 +32,25 @@ cd /home/volodro && git log --oneline -5                         # recent work
 
 ## 🧭 Routing table (read ONLY the file your task touches)
 
-| Task touches                       | Read first                                                            |
-|------------------------------------|-----------------------------------------------------------------------|
-| Anything / every session           | `START_HERE.md` (this), `AGENT_ONBOARDING.md` (rules)                  |
-| Full state & progress              | `Documentation/SESSION_HANDOFF.md` (once per session)                  |
-| Pick a task / task status          | `TASKS.md` (board)                                                     |
-| Live deployed status               | `STATUS.md` + run `scripts/status.sh`                                  |
-| UI/UX — any frontend template/CSS/JS work | **`skydash/docs/FRONTEND_HANDBOOK.md`** — read this FIRST, it's the current design system spec (post-redesign) |
-| UI/UX Dashboard (tasks 1–10), historical | `skydash/docs/task_planning/01_ux_shutek_dashboard.md` (superseded by FRONTEND_HANDBOOK.md for conventions; still useful for original task rationale) |
-| UI/UX Detail pages (11–20), historical | `skydash/docs/task_planning/02_ux_shutek_detail_pages.md` (superseded by FRONTEND_HANDBOOK.md for conventions; still useful for original task rationale) |
-| Hermes agent (26–40)               | `skydash/docs/task_planning/03_agent_hermes_integration.md` + `hermes_agent.py` |
-| Cline agent (27–41)                | `skydash/docs/task_planning/04_agent_cline_integration.md`             |
-| Error logging (42–61)              | `skydash/docs/task_planning/05_error_logging_system.md` + `app.py` caching |
-| Cloudflare (61–72)                 | `skydash/docs/task_planning/06_cloudflare_integration.md`              |
-| Live monitoring (73–82)            | `skydash/docs/task_planning/07_live_monitoring.md`                     |
-| Backups (83–90)                    | `skydash/docs/task_planning/08_backup_system.md`                       |
-| Ports/security groups (91–100)     | `skydash/docs/task_planning/09_port_management.md`                     |
-| Providers / business logic         | `skydash/providers/registry.py` + each `providers/<cloud>.py`          |
-| Auth / config store                | `skydash/auth.py`, `skydash/config_store.py`                           |
-| Routes / Flask layer               | `skydash/app.py`                                                       |
-| CI/CD / deployment                 | `.github/workflows/deploy.yml` + `deploy/nginx/skydash.conf`           |
+| Task touches                                | Read first                                                            |
+|---------------------------------------------|-----------------------------------------------------------------------|
+| Anything / every session                    | `START_HERE.md` (this), `AGENT_ONBOARDING.md` (rules)                 |
+| Full state & progress                       | `STATUS.md` + run `scripts/status.sh`                                 |
+| Architecture audit / spec coverage (144 §) | `docs/architecture-gap-analysis.md` (NEW — full §1–144 classification) |
+| Iteration planning (10 iterations)          | `docs/iteration-plan.md` (NEW — maps tasks to spec sections)           |
+| Domain model & entities                     | `docs/domain-model.md` (NEW)                                          |
+| Provider framework / SDK                    | `docs/provider-framework.md` (NEW) + `skydash/providers/`              |
+| Security model & hardening                  | `docs/security-model.md` (NEW) + `AGENT_ONBOARDING.md`                |
+| Terraform integration                       | `docs/terraform-integration.md` (NEW)                                  |
+| API design                                  | `docs/api-reference.md` (NEW)                                         |
+| UI/UX design & wireframes                   | `skydash/docs/FRONTEND_HANDBOOK.md` (current design system) + `docs/ui-wireframes.md` (NEW) |
+| Deployment topology                         | `docs/infrastructure-diagram.md` (NEW)                               |
+| Pick a task / task status                   | `TASKS.md` (board)                                                    |
+| Old planning docs (historical, 100-task)    | `skydash/docs/task_planning/` — Category 1–9 docs (superseded by iteration plan for new work) |
+| Auth / config store                         | `skydash/auth.py`, `skydash/config_store.py`                          |
+| Routes / Flask layer                        | `skydash/app.py`                                                      |
+| CI/CD / deployment                          | `.github/workflows/deploy.yml` + `deploy/nginx/skydash.conf`          |
+| Live deployed status                        | `STATUS.md` + run `scripts/status.sh`                                 |
 
 ## 📜 The 7 Hard Rules (full text in AGENT_ONBOARDING.md)
 
@@ -64,6 +63,32 @@ cd /home/volodro && git log --oneline -5                         # recent work
 7. **Milestone doc-sync** — after EVERY milestone update the knowledge base
    (this file, `STATUS.md`, `SESSION_HANDOFF.md`, `TASKS.md`) and git-commit,
    even mid-session (see `Documentation/WORKFLOW.md` §3).
+
+## 🔄 Iteration workflow (new)
+
+The project has transitioned from the old 100-task board (`TASKS.md` Categories
+1–9) to a **spec-driven 10-iteration plan** mapped to all 144 sections of the
+`Multi-Cloud Infrastructure Management Framework.md`.
+
+| Iter | Focus | Status | Key Doc |
+|------|-------|--------|---------|
+| **0** | Architecture audit + gap analysis | ✅ Complete | `docs/architecture-gap-analysis.md` |
+| 1 | CSRF, rate limiting, API v1, OpenAPI, error codes | ⬜ Next | `docs/iteration-plan.md` |
+| 2 | Provider capabilities, drift detection UI | ⬜ Pending | — |
+| 3 | Secrets migration, RBAC, audit logging | ⬜ Pending | — |
+| 4 | UI safety, activity timeline, notifications | ⬜ Pending | — |
+| 5 | Terraform integration (state, drift, plan/apply UX) | ⬜ Pending | `docs/terraform-integration.md` |
+| 6 | Structured logging, Prometheus + Grafana | ⬜ Pending | — |
+| 7 | Alerts, inventory, relationships graph | ⬜ Pending | — |
+| 8 | Project/Environment entities, Application model | ⬜ Pending | `docs/domain-model.md` |
+| 9 | OPA policy engine, multi-tenancy, GitOps | ⬜ Pending | — |
+| 10 | Production hardening (⛔ REQUIRES USER DECISION) | ⬜ Pending | — |
+
+> **Iter 10 requires user decision** — needs budget approval for external
+> services (Vault, Redis, PostgreSQL, Prometheus, Grafana).
+> **Total Terraform integration** (all commands, remote backends, OPA/Conftest,
+> Sentinel) is NOT covered by the current plan — it's a 3-iteration expansion
+> detailed in `docs/terraform-integration.md`.
 
 ## ⚡ Quick Start
 

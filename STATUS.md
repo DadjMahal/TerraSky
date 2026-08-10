@@ -101,15 +101,56 @@ written into state. `oci` SDK confirms `get_instance` → state `RUNNING`, live 
    stale nginx default before we configured reverse proxy; verify after CDN if present.
 4. **`/` root returns 302 → /login** (auth) — expected, not a bug.
 
+## 🔧 Iteration 0 — Architecture Audit & Gap Analysis (COMPLETE)
+
+**Completed 2026-08-10.** Mapped all 144 sections of
+`Multi-Cloud Infrastructure Management Framework.md` to the actual codebase.
+Created `docs/` directory with 8 design documents.
+
+| File | § Covered | Lines | Status |
+|------|-----------|-------|--------|
+| `docs/architecture-gap-analysis.md` | §1–144 (all) | 223 | ✅ All 144 sections classified |
+| `docs/domain-model.md` | §6, §25-31, §99 | 153 | ✅ Entity model mapped |
+| `docs/provider-framework.md` | §7-10, §72-73, §83 | 157 | ✅ SDK design |
+| `docs/security-model.md` | §29-41, §67-80, §105-108 | 113 | ✅ Risk register + roadmap |
+| `docs/terraform-integration.md` | §11-15, §42, §102-104 | 121 | ✅ Current + total scope |
+| `docs/api-reference.md` | §62, §94-95, §127 | 84 | ✅ Endpoints mapped |
+| `docs/ui-wireframes.md` | §48-63, §86-87 | 100 | ✅ Tabs + gaps |
+| `docs/infrastructure-diagram.md` | §3-4 | 100 | ✅ Topology + gaps |
+| `docs/iteration-plan.md` | §134, §141 | 92 | ✅ 10 iterations mapped |
+
+### Classification Summary (§144)
+- **IMPLEMENTED:** 24 sections (17%)
+- **PARTIALLY_IMPLEMENTED:** 28 sections (19%)
+- **NOT_IMPLEMENTED:** 72 sections (50%)
+- **REQUIRES_PROVIDER_SUPPORT:** 12 sections (8%)
+- **REQUIRES_EXTERNAL_SERVICE:** 4 sections (3%)
+- **IMPOSSIBLE_WITH_CURRENT_ARCHITECTURE:** 4 sections (3%)
+
+### Knowledge Base Updated
+- ✅ `START_HERE.md` — routing table updated with new docs/ entries; iteration workflow table added
+- ✅ `STATUS.md` — this entry
+- ✅ `TASKS.md` — new iteration-based task board added (old 100-task board archived as historical)
+- ✅ `docs/` directory created with 8 design documents
+
+### Key Finding: Terraform Integration Scope
+**Current plan (Iter 5)** only covers tfstate reading + basic drift detection.
+**"Total Terraform integration"** (all commands, remote backends, modules, OPA/Conftest,
+Sentinel, CI/CD integration) is NOT in scope — it's a 3-iteration expansion
+detailed in `docs/terraform-integration.md`. **Awaiting user decision** on whether
+to expand Iter 5 or defer to later iterations.
+
 ## 🔜 Next steps (highest impact first)
 
-1. **Deploy + verify the frontend redesign** (see In Progress above and
-   `skydash/docs/FRONTEND_HANDBOOK.md` § 8) — doesn't block the items below,
-   but should happen before more UI work is layered on top of it.
-2. Install cloud SDKs into server venv so all 4 providers report live status (prerequisite for many tasks).
-3. Continue with **Category 3 — Hermes Agent** (#26 state widget, #27 SSH terminal, #28 remote exec…).
-4. Then Category 5 logging.
-   > "Set secure `SKYDASH_ADMIN_PASSWORD`" was moved to the **Backlog** in `TASKS.md` (security hardening).
+**Iteration 1 is next.** Key tasks:
+1. Add CSRF protection (Flask-WTF) on all POST routes — `docs/security-model.md` § Iter 1
+2. Add rate limiting (Flask-Limiter) on auth + API endpoints — `docs/security-model.md` § Iter 1
+3. Add `/api/v1/` versioning + generate OpenAPI 3.0 spec — `docs/api-reference.md` § Iter 1
+4. Standardize error responses with codes — `docs/api-reference.md` § Iter 1
+5. Persist `app.secret_key` to env file (don't auto-regerate) — `docs/security-model.md` § Iter 1
+
+> The old "Deploy + verify frontend redesign" task remains in progress — see
+> `START_HERE.md` routing table for details.
 
 ## ⚙️ How to refresh this
 

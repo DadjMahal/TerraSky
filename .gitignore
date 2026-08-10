@@ -19,6 +19,8 @@
 !AGENT_ONBOARDING.md
 !TASKS.md
 !STATUS.md
+!docs/
+!docs/**
 
 # ============================================================
 # Re-ignore sensitive/junk INSIDE whitelisted dirs

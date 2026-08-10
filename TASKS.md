@@ -188,4 +188,108 @@
 |------|---------|------------------|
 | Set secure `SKYDASH_ADMIN_PASSWORD` (server venv `terraform/.env`) | STATUS.md next-step #2 | Skipped per user request 2026-08-04; security hardening, not feature work |
 
+---
+
+## 🔄 Iteration-Based Task Board (NEW — replaces Category 1–9 for new work)
+
+> Based on §134 (Development Phases), §141 (Engineering Phases), and the
+> 144-section gap analysis. See `docs/iteration-plan.md` for the full roadmap.
+> The old 100-task board above is preserved for historical reference.
+
+### Iteration 0 — Architecture Audit & Gap Analysis ✅ COMPLETE
+
+| # | Task | Status | Owner | Result / Evidence |
+|---|------|--------|-------|-------------------|
+| task_0001 | Create `docs/` directory + gap analysis | ✅ done | lead | `docs/architecture-gap-analysis.md` — all 144 sections classified |
+| task_0002 | Domain model doc | ✅ done | lead | `docs/domain-model.md` — entities mapped to code |
+| task_0003 | Provider framework + security + Terraform docs | ✅ done | lead | 3 docs created |
+| task_0004 | API reference + UI wireframes docs | ✅ done | lead | 2 docs created |
+| task_0005 | Infrastructure diagram + iteration plan | ✅ done | lead | 2 docs created |
+| task_0006 | Update START_HERE.md + STATUS.md + TASKS.md | ✅ done | lead | Knowledge base synced, committed |
+
+### Iteration 1 — CSRF, Rate Limiting, API v1, OpenAPI, Error Codes
+
+| # | Task | Status | Owner | § | Evidence |
+|---|------|--------|-------|---|----------|
+| task_0007 | Add CSRF protection (Flask-WTF) on all POST routes | ⬜ pending | | §77 | |
+| task_0008 | Add rate limiting (Flask-Limiter) on auth + API | ⬜ pending | | §76 | |
+| task_0009 | Add `/api/v1/` versioning prefix | ⬜ pending | | §62 | |
+| task_0010 | Generate OpenAPI 3.0 spec from routes | ⬜ pending | | §125 | |
+
+### Iteration 2 — Provider Capabilities, Drift Detection
+
+| # | Task | Status | Owner | § | Evidence |
+|---|------|--------|-------|---|----------|
+| task_0011 | Extend `CloudProvider` with `get_capabilities()` | ⬜ pending | | §2.2, §10 | |
+| task_0012 | Add drift detection (tfstate vs live comparison) | ⬜ pending | | §15 | |
+| task_0013 | Standardize status model (use `models.py` constants everywhere) | ⬜ pending | | §43 | |
+
+### Iteration 3 — Secrets Migration, RBAC, Audit Logging
+
+| # | Task | Status | Owner | § | Evidence |
+|---|------|--------|-------|---|----------|
+| task_0014 | Migrate secrets to Vault/Secrets Manager | ⬜ pending | | §29, §69 | |
+| task_0015 | Implement RBAC roles (admin/user/read-only) | ⬜ pending | | §33, §34 | |
+| task_0016 | Add audit logging (structured, append-only) | ⬜ pending | | §37, §81 | |
+
+### Iteration 4 — UI Safety, Activity Timeline, Notifications
+
+| # | Task | Status | Owner | § | Evidence |
+|---|------|--------|-------|---|----------|
+| task_0017 | Danger-zone separation for destroy/reboot | ⬜ pending | | §86 | |
+| task_0018 | Activity timeline (§87) | ⬜ pending | | §87 | |
+| task_0019 | Notification center / toast system | ⬜ pending | | §60 | |
+
+### Iteration 5 — Terraform Integration
+
+| # | Task | Status | Owner | § | Evidence |
+|---|------|--------|-------|---|----------|
+| task_0020 | tfstate reading + basic drift (§11) | ⬜ pending | | §11, §15 | |
+| task_0021 | Workspace model (design) (§12) | ⬜ pending | | §12 | |
+| task_0022 | State security (design) (§13) | ⬜ pending | | §13 | |
+| task_0023 | Provider sync cron (§42) | ⬜ pending | | §42 | |
+| task_0024 | Plan/apply UX read-only (§102-104) | ⬜ pending | | §102-104 | |
+
+> **Terraform scope question:** "Total Terraform integration" (all commands,
+> remote backends, modules, OPA/Conftest, Sentinel) is NOT in Iter 5.
+> See `docs/terraform-integration.md`. **Awaiting user decision.**
+
+### Iteration 6 — Logging, Prometheus, Grafana
+
+| # | Task | Status | Owner | § | Evidence |
+|---|------|--------|-------|---|----------|
+| task_0025 | Structured logging | ⬜ pending | | §81 | |
+| task_0026 | Prometheus metrics endpoint | ⬜ pending | | §45, §82 | |
+| task_0027 | Grafana dashboard config | ⬜ pending | | §82 | |
+
+### Iteration 7 — Alerts, Inventory, Relationships
+
+| # | Task | Status | Owner | § | Evidence |
+|---|------|--------|-------|---|----------|
+| task_0028 | Alert thresholds + dispatch | ⬜ pending | | §46 | |
+| task_0029 | Global inventory view | ⬜ pending | | §57 | |
+| task_0030 | Resource relationships graph | ⬜ pending | | §88, §89 | |
+
+### Iteration 8 — Project/Environment, Application Model
+
+| # | Task | Status | Owner | § | Evidence |
+|---|------|--------|-------|---|----------|
+| task_0031 | Project + Environment entities | ⬜ pending | | §6.1, §105 | |
+| task_0032 | Application model + deployment engine | ⬜ pending | | §25-27 | |
+
+### Iteration 9 — OPA Policy Engine, Multi-Tenancy, GitOps
+
+| # | Task | Status | Owner | § | Evidence |
+|---|------|--------|-------|---|----------|
+| task_0033 | OPA/Conftest policy gate on plans | ⬜ pending | | §67-68 | |
+| task_0034 | Multi-tenancy (Org/Project isolation) | ⬜ pending | | §35-36 | |
+| task_0035 | GitOps workflow | ⬜ pending | | §65, §66 | |
+
+### Iteration 10 — Production Hardening ⛔ REQUIRES USER DECISION
+
+| # | Task | Status | Owner | § | Evidence |
+|---|------|--------|-------|---|----------|
+| task_0036 | External services budget approval | 🔴 blocked | user | § | Needs user decision |
+| task_0037 | Deploy Vault + Redis + PostgreSQL + Prometheus + Grafana | ⬜ pending | | §119, §82 | |
+
 
