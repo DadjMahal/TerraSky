@@ -12,7 +12,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from flask import Flask, abort, Blueprint, jsonify, redirect, render_template, request, url_for
+from flask import Flask, abort, Blueprint, jsonify, redirect, render_template, render_template_string, request, url_for
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -138,6 +138,24 @@ def v1_instance_logs(slug, log_type):
         return jsonify({"status": "error", "error": "Provider not available", "code": "PROVIDER_UNAVAILABLE"}), 503
     logs = provider.get_logs(inst, log_type)
     return _envelop({"messages": logs, "log_type": log_type})
+
+# --- OpenAPI spec + Swagger UI (§62, §125) ---
+from openapi import build_spec, SWAGGER_UI_HTML
+
+
+@api_v1.route("/openapi.json")
+@login_required
+def v1_openapi_json():
+    """GET /api/v1/openapi.json — machine-readable API spec (§62)."""
+    return jsonify(build_spec())
+
+
+@api_v1.route("/docs")
+@login_required
+def v1_swagger_ui():
+    """GET /api/v1/docs — Swagger UI rendered from the live spec (§125)."""
+    return render_template_string(SWAGGER_UI_HTML)
+
 
 # Register the v1 blueprint
 app.register_blueprint(api_v1)
