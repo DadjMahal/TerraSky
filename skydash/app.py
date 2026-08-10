@@ -279,6 +279,114 @@ def v1_notifications():
     return _envelop({"notifications": events})
 
 
+@api_v1.route("/applications/<app_id>/deployments", methods=["POST"])
+@auth_limiter.limit("10 per minute")
+@require_role(rbac.ADMIN, rbac.OPERATOR)
+@login_required
+def v1_deploy(app_id: str):
+    """POST /api/v1/applications/<id>/deployments — create a deployment (§26).
+
+    Prod environments go through the §66 approval gate: the deployment is
+    created in ``queued`` state with an ``approval_id`` (must be approved
+    before the run executes on the host).
+    """
+    from deployments import applications as dep_apps
+    from deployments.approvals import create as create_approval  # noqa: F401
+
+    data = request.get_json(silent=True) or {}
+    commit = (data.get("commit") or "").strip() or "HEAD"
+    app = dep_apps.get_application(app_id)
+    if app is None:
+        return jsonify({"status": "error", "error": "Application not found", "code": "NOT_FOUND"}), 404
+    rec = dep_apps.deploy_with_approval(app, commit, requested_by=get_current_user() or "api", dry_run=True)
+    audit_system.add(actor=get_current_user() or "api", action="deploy.create",
+                     resource=f"applications/{app_id}", detail={"commit": commit, "status": rec.status},
+                     outcome="success")
+    return _envelop(rec.to_dict()), 202 if rec.status == "queued" else 200
+
+
+@api_v1.route("/applications/<app_id>/deployments/<deployment_id>")
+@login_required
+def v1_deployment_status(app_id: str, deployment_id: str):
+    """GET deployment status + logs (§27)."""
+    from deployments import applications as dep_apps
+
+    rec = dep_apps.get_deployment(deployment_id)
+    if rec is None or rec.application_id != app_id:
+        return jsonify({"status": "error", "error": "Deployment not found", "code": "NOT_FOUND"}), 404
+    return _envelop(rec.to_dict())
+
+
+@api_v1.route("/applications/<app_id>/deployments/<deployment_id>/rollback", methods=["POST"])
+@login_required
+def v1_rollback(app_id: str, deployment_id: str):
+    """POST rollback — re-run the prior known-good step (§28)."""
+    from deployments import applications as dep_apps
+
+    try:
+        rec = dep_apps.rollback(deployment_id)
+    except KeyError:
+        return jsonify({"status": "error", "error": "Deployment not found", "code": "NOT_FOUND"}), 404
+    audit_system.add(actor=get_current_user() or "api", action="deploy.rollback",
+                     resource=f"applications/{app_id}", detail={"status": rec.status},
+                     outcome="success" if rec.status == "rolled_back" else "error")
+    return _envelop(rec.to_dict())
+
+
+@api_v1.route("/secrets", methods=["GET", "POST"])
+@login_required
+def v1_secrets():
+    """Secrets §29-30 — GET lists (masked) metadata; POST stores an encrypted value."""
+    from deployments.secrets import make_store
+
+    store = make_store()
+    if request.method == "GET":
+        return _envelop({"secrets": store.list_secrets()})
+    data = request.get_json(silent=True) or {}
+    key = (data.get("key") or "").strip()
+    value = data.get("value")
+    if not key or not value:
+        return jsonify({"status": "error", "error": "key and value required", "code": "INVALID_INPUT"}), 400
+    meta = store.set_secret(key, value, actor=get_current_user() or "api")
+    return _envelop(meta), 201
+
+
+@api_v1.route("/secrets/<key>", methods=["DELETE"])
+@login_required
+def v1_secret_delete(key: str):
+    from deployments.secrets import make_store
+
+    store = make_store()
+    if not store.delete_secret(key):
+        return jsonify({"status": "error", "error": "Secret not found", "code": "NOT_FOUND"}), 404
+    return _envelop({"deleted": key})
+
+
+@api_v1.route("/approvals", methods=["GET"])
+@login_required
+def v1_approvals_list():
+    """GET /api/v1/approvals — pending approval requests (§66)."""
+    from deployments.approvals import pending
+
+    return _envelop({"approvals": pending()})
+
+
+@api_v1.route("/approvals/<approval_id>/approve", methods=["POST"])
+@require_role(rbac.ADMIN)
+@login_required
+def v1_approval_approve(approval_id: str):
+    """POST approve an approval request (admin only) (§66)."""
+    from deployments.approvals import approve
+
+    try:
+        result = approve(approval_id, by=get_current_user() or "api")
+    except KeyError:
+        return jsonify({"status": "error", "error": "Approval not found", "code": "NOT_FOUND"}), 404
+    audit_system.add(actor=get_current_user() or "api", action="approval.approve",
+                     resource=f"approvals/{approval_id}", outcome="success")
+    return _envelop(result)
+
+
 @api_v1.route("/topology")
 @login_required
 def v1_topology():

@@ -65,3 +65,8 @@ skydash/audit_logs/*.jsonl
 
 # Cline session data (large, private)
 .cline/
+
+# Iter 6 deployment & secrets runtime data (machine-generated) — NEVER commit
+skydash/secrets_store.json
+skydash/approval_log.jsonl
+skydash/deployments/*.json

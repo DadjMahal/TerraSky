@@ -266,8 +266,8 @@
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
-| task_0028 | Alert thresholds + dispatch | ⬜ pending | | §46 | |
-| task_0029 | Global inventory view | ⬜ pending | | §57 | |
+| task_0028 | Alert thresholds + dispatch | ⬜ pending | | §46 | Iter 7 (next) | 
+| task_0029 | Global inventory view | ⬜ pending | | §57 | Iter 7 (next) |
 | task_0030 | Resource relationships graph | ⬜ pending | | §88, §89 | |
 
 ### Iteration 8 — Project/Environment, Application Model
@@ -275,7 +275,7 @@
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
 | task_0031 | Project + Environment entities | ⬜ pending | | §6.1, §105 | |
-| task_0032 | Application model + deployment engine | ⬜ pending | | §25-27 | |
+| task_0032 | Application model + deployment engine | ✅ done | Cline | §25-27 | `deployments/applications.py` + `/api/v1/applications/*/deployments`; rollback + prod approval gate wired; unit-tested (real host builds BLOCKED on deploy infra) |
 
 ### Iteration 9 — OPA Policy Engine, Multi-Tenancy, GitOps
 

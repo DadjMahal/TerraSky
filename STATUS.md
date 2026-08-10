@@ -201,6 +201,19 @@ Tests: `python3 skydash/tests/test_lifecycle.py` (5/5 PASS; import_engine guarde
 
 Tests: `python3 skydash/tests/test_lifecycle.py` now 6/6 PASS. Browser-level verification pending (no Flask).
 
+## 🚀 Iteration 6 — Deployment & Secrets (delivered, unit-tested)
+
+| Module | § | Verified |
+|---|---|---|
+| `deployments/applications.py` | §25-28 app model + deterministic deploy/rollback runner (timeout, output cap, dry-run) | deploy/rollback/prod-queue tests PASS |
+| `deployments/approvals.py` | §66 approval gate (prod deploy/rollback/stop → pending until admin approves) | gate/approve tests PASS |
+| `deployments/secrets.py` | §29-31 encrypted-at-rest store (AES-GCM via `crypto.py`, masked list API) | round-trip + no-plaintext-on-disk tests PASS |
+| API | `/api/v1/applications/*/deployments`, `/rollback`, `/secrets`, `/approvals/*/approve` (RBAC-gated) | py_compile OK |
+| Design | `docs/gitops-design.md` — change→validate→plan→approval→apply flow | doc |
+
+Tests: `python3 skydash/tests/test_deployments.py` 3/3 PASS. Real host build execution,
+webhooks, blue/green + registries remain BLOCKED (external infra — documented in the doc).
+
 ## ⚙️ How to refresh this
 
 ```bash
