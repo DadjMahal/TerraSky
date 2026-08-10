@@ -38,35 +38,29 @@ $ curl -s http://localhost/login | grep -o '<title>[^<]*</title>'          # <ti
   the matching `*_ACCESS_KEY`/`ARM_*`/`OCI_*`/`ALICLOUD_*` env vars are present
   in `terraform/.env` (see Known Limitations).
 
-### ⚠️ Instance inventory — current (verified 2026-08-10, post-prune)
-User requested: keep **AWS + DigitalOcean only** — remove Azure, Oracle, Alibaba.
-The 5 removed resources (3 Azure VMs, 1 Oracle VM, 1 Alibaba VM) were pruned
-from `terraform/terraform.tfstate` (backup at `terraform.tfstate.bak.before_pruning`).
-The remaining 5 instances render as dashboard cards:
+### ✅ Instance inventory — all live & running (verified 2026-08-10, post-AWS-activate)
+User kept **AWS + DigitalOcean only**; Azure / Oracle / Alibaba pruned. Vikunja
+removed (only Hermes requested). All 4 remaining instances show live
+`running` status with real IPs and `can_manage=true` (Start/Stop enabled):
 
-| Instance | Provider | Status | Public IP | can_manage |
-|----------|----------|--------|-----------|------------|
-| Hermes | aws | `unknown` ❌ | *(needs creds)* | false |
-| Vikunja | aws | `unknown` ❌ | *(needs creds)* | false |
-| digital-1 | digitalocean | `running` ✅ | 207.154.201.40 | true |
-| digital-2 | digitalocean | `running` ✅ | 167.172.188.248 | true |
-| digital-3 | digitalocean | `running` ✅ | 167.71.32.118 | true |
+| Instance | Provider | Status | Public IP | EC2/Droplet ID |
+|----------|----------|--------|-----------|----------------|
+| aws-hermes | aws | `running` ✅ | 63.179.97.116 | i-01b445d2825c75ab9 |
+| digital-1 | digitalocean | `running` ✅ | 207.154.201.40 | 591231372 |
+| digital-2 | digitalocean | `running` ✅ | 167.172.188.248 | 591231377 |
+| digital-3 | digitalocean | `running` ✅ | 167.71.32.118 | 591231381 |
 
-**DigitalOcean** — live. Token `DIGITALOCEAN_ACCESS_TOKEN` stored in the
-git-ignored `terraform/.env` (chmod 600, `volodro`-owned). `seed_digitalocean_state.py`
+**DigitalOcean** — live. Token `DIGITALOCEAN_ACCESS_TOKEN` was stored in the
+git-ignored `terraform/.env` (chmod 600, volodro-owned). `seed_digitalocean_state.py`
 enumerated your 3 live droplets via the DO API v2 and wrote real entries (valid
-instance IDs, IPs) into state. Status `running`, real IPs, Start/Stop enabled.
+instance IDs, IPs) into state.
 
-**AWS** — cards rendered from reconstructed state, but still `unknown`.
-`/api/statuses` returns `"Provider SDK/credentials not available"` because:
-- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are absent from `terraform/.env`;
-- the reconstructed state has no EC2 instance IDs (`i-…`) — the original
-  `terraform.tfstate` (with cloud-assigned IDs) was on the old Azure-2 host.
-
-➡️ To activate AWS live management, provide: `AWS_ACCESS_KEY_ID` +
-`AWS_SECRET_ACCESS_KEY` (and optionally `AWS_DEFAULT_REGION=eu-central-1`).
-With those I can query EC2 by Name tag (`Hermes`, `Vikunja`), write the real
-instance IDs back into state, restart, and flip both cards to `running`.
+**AWS** — live. Credentials (`AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` +
+`AWS_DEFAULT_REGION=eu-central-1`) stored in git-ignored `.env`. The Hermes
+instance ID (`i-01b445d2825c75ab9`) was discovered by querying EC2 with
+`describe-instances --filters "Name=tag:Name,Values=Hermes"` and written into
+`terraform.tfstate`. `boto3` confirms `describe_instances` → state `running`, IP
+`63.179.97.116`, `can_manage=true`.
 
 ## ✅ Done & verified (w/ evidence)
 
