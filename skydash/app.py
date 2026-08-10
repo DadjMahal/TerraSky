@@ -12,7 +12,10 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from flask import Flask, abort, jsonify, redirect, render_template, request, url_for
+from flask import Flask, abort, Blueprint, jsonify, redirect, render_template, request, url_for
+from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 from models import STATUS_UNKNOWN
 from providers.registry import get_provider
@@ -21,6 +24,7 @@ from auth import auth_bp, init_auth, login_required, get_current_user
 import hermes_agent
 import config_store
 import status_history
+from auth import limiter as auth_limiter
 
 
 def _apply_overrides(inst_dict: dict) -> dict:
@@ -41,6 +45,102 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = "skydash-dev-secret-change-me"
 init_auth(app)
+
+# --- CSRF Protection (§77) ---
+csrf = CSRFProtect(app)
+
+# --- API v1 Blueprint (§62) ---
+api_v1 = Blueprint("api_v1", __name__, url_prefix="/api/v1")
+
+# --- CSRF error handler ---
+@csrf.error_handler
+def handle_csrf_error(reason):
+    if request.is_json or request.path.startswith("/api/"):
+        return jsonify({"status": "error", "error": "CSRF token missing or invalid", "code": "CSRF_FAILURE"}), 400
+    return jsonify({"status": "error", "error": "CSRF token missing or invalid"}), 400
+
+# --- CSRF token endpoint for AJAX clients ---
+@app.route("/api/csrf-token")
+@login_required
+def csrf_token_view():
+    """Return the current CSRF token for AJAX form submissions."""
+    return jsonify({"status": "ok", "csrf_token": generate_csrf()})
+
+# --- Expose CSRF token to all templates ---
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=generate_csrf)
+
+# --- Deprecation header for legacy /api/ routes (§125) ---
+@app.after_request
+def _add_deprecation_header(response):
+    """Add deprecation notice to old /api/ routes (non-v1)."""
+    if request.path.startswith("/api/") and not request.path.startswith("/api/v1"):
+        response.headers["X-API-Version"] = "deprecated; use /api/v1/ instead"
+    return response
+
+# --- API v1 Blueprint routes (§62, §125) ---
+# Standardized envelope: {"status": "ok"|"error", "data": ..., "error": ...}
+def _envelop(data, status="ok"):
+    return jsonify({"status": status, "data": data})
+
+@api_v1.route("/statuses")
+@login_required
+def v1_statuses():
+    """GET /api/v1/statuses — fleet-wide live status (standardized envelope)."""
+    return _envelop(api_statuses().get_json())
+
+@api_v1.route("/instances/<slug>")
+@login_required
+def v1_instance_detail(slug):
+    """GET /api/v1/instances/<slug> — detailed instance info (standardized)."""
+    inst = get_instance_by_slug(slug)
+    if not inst:
+        return jsonify({"status": "error", "error": "Instance not found", "code": "NOT_FOUND"}), 404
+    provider = get_provider(inst.provider)
+    if provider:
+        provider.get_instance_details(inst)
+    return _envelop(inst.to_dict())
+
+@api_v1.route("/instances/<slug>/<action>", methods=["POST"])
+@auth_limiter.limit("10 per minute")
+@login_required
+def v1_instance_action(slug, action):
+    """POST /api/v1/instances/<slug>/<action> — start/stop (standardized)."""
+    inst = get_instance_by_slug(slug)
+    if not inst:
+        return jsonify({"status": "error", "error": "Instance not found", "code": "NOT_FOUND"}), 404
+    if action not in ("start", "stop"):
+        return jsonify({"status": "error", "error": "Invalid action", "code": "INVALID_ACTION"}), 400
+    provider = get_provider(inst.provider)
+    if not provider or not provider.available():
+        return jsonify({"status": "error", "error": "Provider not available", "code": "PROVIDER_UNAVAILABLE"}), 503
+    ok, msg = provider.start_instance(inst) if action == "start" else provider.stop_instance(inst)
+    _status_cache.pop(slug, None)
+    transitional = "starting" if action == "start" else "stopping"
+    return _envelop({"ok": ok, "message": msg, "status": transitional if ok else "error"})
+
+@api_v1.route("/instances/<slug>/metrics")
+@login_required
+def v1_instance_metrics(slug):
+    """GET /api/v1/instances/<slug>/metrics — CPU/RAM/disk specs (standardized)."""
+    return _envelop(api_metrics(slug).get_json())
+
+@api_v1.route("/instances/<slug>/logs/<log_type>")
+@login_required
+def v1_instance_logs(slug, log_type):
+    """GET /api/v1/instances/<slug>/logs/<type> — log lines (standardized)."""
+    inst = get_instance_by_slug(slug)
+    if not inst:
+        return jsonify({"status": "error", "error": "Instance not found", "code": "NOT_FOUND"}), 404
+    provider = get_provider(inst.provider)
+    if not provider:
+        return jsonify({"status": "error", "error": "Provider not available", "code": "PROVIDER_UNAVAILABLE"}), 503
+    logs = provider.get_logs(inst, log_type)
+    return _envelop({"messages": logs, "log_type": log_type})
+
+# Register the v1 blueprint
+app.register_blueprint(api_v1)
 
 # --- Real-time SSH terminal (Category 2 #16) -------------------------------
 # Flask-SocketIO wraps the app so xterm.js can talk to a live paramiko channel.
@@ -403,6 +503,7 @@ def _ssh_disconnect():  # pragma: no cover - realtime handler
 
 
 @app.route("/instance/<slug>/<action>", methods=["POST"])
+@auth_limiter.limit("10 per minute")
 @login_required
 def instance_action(slug: str, action: str):
     inst = get_instance_by_slug(slug)
@@ -538,6 +639,7 @@ def admin_panel():
 
 
 @app.route("/admin/settings", methods=["POST"])
+@auth_limiter.limit("5 per hour")
 @login_required
 def admin_save_settings():
     """Save site settings (name, description, favicon, logo)."""
@@ -552,6 +654,7 @@ def admin_save_settings():
 
 
 @app.route("/admin/profile", methods=["POST"])
+@auth_limiter.limit("10 per hour")
 @login_required
 def admin_save_profile():
     """Save admin profile (username, email)."""
@@ -564,6 +667,7 @@ def admin_save_profile():
 
 
 @app.route("/admin/password", methods=["POST"])
+@auth_limiter.limit("3 per hour")
 @login_required
 def admin_change_password():
     """Change admin password."""
@@ -587,6 +691,7 @@ def admin_change_password():
 
 
 @app.route("/admin/instance/<slug>/hide")
+@auth_limiter.limit("30 per hour")
 @login_required
 def admin_hide_instance(slug: str):
     """Hide an instance from the dashboard."""
@@ -596,6 +701,7 @@ def admin_hide_instance(slug: str):
 
 
 @app.route("/admin/instance/<slug>/unhide")
+@auth_limiter.limit("30 per hour")
 @login_required
 def admin_unhide_instance(slug: str):
     """Unhide an instance from the dashboard."""
@@ -605,6 +711,7 @@ def admin_unhide_instance(slug: str):
 
 
 @app.route("/admin/instance/add", methods=["POST"])
+@auth_limiter.limit("10 per hour")
 @login_required
 def admin_add_instance():
     """Add a custom instance manually."""
@@ -620,6 +727,7 @@ def admin_add_instance():
 
 
 @app.route("/admin/instance/<instance_id>/remove")
+@auth_limiter.limit("10 per hour")
 @login_required
 def admin_remove_instance(instance_id: str):
     """Remove a custom instance."""
@@ -628,6 +736,7 @@ def admin_remove_instance(instance_id: str):
     return redirect(url_for("admin_panel"))
 
 @app.route("/admin/instance/<slug>/edit", methods=["POST"])
+@auth_limiter.limit("30 per hour")
 @login_required
 def admin_edit_instance(slug: str):
     """Edit instance display name, description, and tags."""

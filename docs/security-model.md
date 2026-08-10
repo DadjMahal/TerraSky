@@ -1,3 +1,40 @@
+# SkyDash Security Model
+
+> **Created:** 2026-08-10 · Source: §29-36, §68, §76-80 + actual `auth.py`, `config_store.py`.
+> Current state: single-admin session auth; no RBAC/MFA/audit/secrets/encryption.
+
+## 1. Current (implemented)
+
+- **Auth (§32):** `auth.py` — username/password, Werkzeug `check_password_hash`, 1h session timeout. Admin password from `SKYDASH_ADMIN_PASSWORD` env or stored hash in `skydash_config.json`.
+- **Authz (§33):** `login_required` decorator on all Flask routes; admin panel for settings/profile/password.
+- **Secrets in git (§124):** `.gitignore` excludes `.env`, `.env.backup`.
+
+## 2. Target Security Stack (gaps to implement)
+
+| Area | Spec | Current | Plan |
+|---|---|---|---|
+| RBAC | §33 | login_required only | roles: owner/admin/operator/readonly; permission/role/assignment tables |
+| Resource-level authz | §34 | none | project+environment scoping; owner/team checks |
+| Multi-tenancy | §35-36 | single tenant | org id on all rows; row-level isolation |
+| Audit | §37 | none | append-only audit table; every action |
+| User/Team | §32 | single admin | users+teams tables, invite/enroll |
+| MFA | §68 | none | TOTP at login; required for prod/destructive |
+| Secrets | §29-30 | env vars | secrets backend (encrypted), per-env isolation, never returned to UI |
+| Encryption | §31 | none | AES-256-GCM at rest for secrets/creds; TLS everywhere |
+| Rate limiting | §76 | none | Flask-Limiter / NGINX limit_req |
+| Input validation | §77-78 | Template escaping | CSRF tokens, validate redirect next=, SSRF allowlist for endpoints |
+| File security | §79 | no uploads | size/type limits, non-executable storage |
+| DB security | §80 (future) | JSON file | PostgreSQL least-privilege user, TLS, connection pooling, migrations |
+
+## 3. Credential Handling
+
+- Provider creds live in git-ignored `terraform/.env` (systemd `EnvironmentFile`) — OK.
+- Target: encrypted `credentials` table; UI masks secrets (§100); rotation metadata (§69).
+
+## 4. Session & Cookie Flags
+
+- `SESSION_COOKIE_HTTPONLY`, `SESSION_COOKIE_SAMESITE="Lax"`, `SESSION_COOKIE_SECURE` (behind TLS).
+- Add CSRF token to all POST forms (Flask-WTF or custom).
 # Security Model — SkyDash
 
 > Maps the framework's security requirements (§32–39, §67–68, §75–80, §105–108,

@@ -1,3 +1,64 @@
+# SkyDash Provider Framework — Design
+
+> **Created:** 2026-08-10 · Source: §2.1, §2.2, §7-10, §72-73 + actual `skydash/providers/`.
+> Current state: `base.py` (ABC `CloudProvider`), `registry.py`, and 6 providers (AWS, Azure, OCI, Alibaba, DigitalOcean). Custom/SSH via `hermes_agent.py`.
+
+## 1. Current Architecture (implemented)
+
+```
+registry.py (get_provider, all_providers)
+   ├── base.CloudProvider (ABC)
+   │      ├── available() -> bool
+   │      ├── get_status(inst) -> (status, err, pub_ip, pri_ip)
+   │      ├── start_instance / stop_instance
+   │      ├── get_logs(inst, type)  (default = synthetic)
+   │      └── get_instance_details(inst) (live refresh + can_manage)
+   ├── aws.py      (boto3, lazy)
+   ├── azure.py    (azure-mgmt, lazy, cached client)
+   ├── oracle.py   (oci, lazy, cached config+client)
+   ├── alibaba.py  (alibabacloud, lazy)
+   └── digitalocean.py (requests, lazy)
+```
+
+**Good:** lazily-imported SDKs keep memory low; `available()` returns False gracefully; one provider failing does not block others (ThreadPoolExecutor in `/api/statuses`).
+
+## 2. Gaps vs. Spec
+
+| Spec | Gap | Fix |
+|---|---|---|
+| §2.2 Capability-Based | No capability declaration | Add `capabilities: list[str]` to each provider; UI discovers dynamically |
+| §2.3 State model | No desired/actual split | Adopt `ResourceState` (desired vs provider vs monitored) |
+| §8 Discovery | No auto-discovery | Add `discover()` listing accounts/regions/resources |
+| §9 Custom/SSH | Not a formal provider | Package `hermes_agent.py` as a `CustomSSHProvider` |
+| §10 SDK | No authoring SDK | Publish `CloudProvider` as importable interface + docs |
+| §72-73 Plugins | No plugin packaging/security | Separate provider plugins with declared permissions |
+
+## 3. Target Provider Interface (extension of current)
+
+```python
+class CloudProvider(abc.ABC):
+    key: str
+    capabilities: list[str] = []        # e.g. ["start","stop","reboot","snapshot"]
+    # current methods...
+    def discover(self, creds) -> list[dict]: ...   # §8
+    def capabilities_ui(self) -> list[str]:        # §2.2
+```
+
+## 4. Generating a Custom SSH Provider (§9)
+
+`CustomSSHProvider` wraps `hermes_agent.py`:
+- capabilities: `["reboot","execute_command","upload_file","download_file","service_restart"]` (from spec example)
+- profile from `~/.ssh/config` / stored keys
+- `get_status` → SSH `uptime`/`systemctl is-system-running`
+
+## 5. Adding a New Provider (checklist)
+
+1. `providers/<name>.py` → subclass `CloudProvider` (lazy SDK import).
+2. Register in `providers/registry.py`.
+3. Add `RESOURCE_TYPE_PROVIDER` + `_map_<name>` in `state_reader.py`.
+4. Add size specs to `instance_specs.py`.
+5. Add `PROVIDER_ICONS`/`PROVIDER_LABELS` in `models.py`.
+6. Add provider contract test (§116).
 # Provider Framework — Design
 
 > Extends the existing `providers/base.py` + `registry.py` into a full plugin

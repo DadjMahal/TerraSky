@@ -13,12 +13,22 @@ from datetime import timedelta
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 # Blueprint for auth routes
 auth_bp = Blueprint("auth", __name__)
 
 # Session key and timeout
 SESSION_KEY = "skydash_user"
 SESSION_TIMEOUT = 3600  # 1 hour in seconds
+
+# Rate limiter — initialized in init_auth() via init_app()
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[],
+    storage_uri="memory://",
+)
 
 
 def login_required(view):
@@ -34,6 +44,7 @@ def login_required(view):
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
 def login():
     """Handle user login."""
     # If already logged in, redirect to dashboard
@@ -84,7 +95,8 @@ def get_current_user() -> str | None:
 
 
 def init_auth(app):
-    """Register the auth blueprint and configure session settings."""
+    """Register the auth blueprint, configure session settings, and init limiter."""
     app.register_blueprint(auth_bp)
     app.config["SESSION_PERMANENT"] = True
     # Session timeout is set during login
+    limiter.init_app(app)

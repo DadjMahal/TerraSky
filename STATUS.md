@@ -142,13 +142,20 @@ to expand Iter 5 or defer to later iterations.
 
 ## 🔜 Next steps (highest impact first)
 
-**Iteration 1 is next.** Key tasks:
-1. Add CSRF protection (Flask-WTF) on all POST routes — `docs/security-model.md` § Iter 1
-2. Add rate limiting (Flask-Limiter) on auth + API endpoints — `docs/security-model.md` § Iter 1
-3. Add `/api/v1/` versioning + generate OpenAPI 3.0 spec — `docs/api-reference.md` § Iter 1
-4. Standardize error responses with codes — `docs/api-reference.md` § Iter 1
-5. Persist `app.secret_key` to env file (don't auto-regerate) — `docs/security-model.md` § Iter 1
+**Iteration 1** was delivered alongside the Iter 0 audit as a security-hardening
+baseline. All touched modules pass `python3 -m py_compile` (syntax verified);
+**runtime/deploy verification is still pending** (Flask is not installed in this
+environment and the production droplet has not been redeployed yet). See
+`docs/architecture-gap-analysis.md` §3 for the root-cause analysis.
 
+**Iteration 1 — in progress (code implemented in this pass):**
+1. ✅ CSRF protection (Flask-WTF `CSRFProtect`) on all POST routes — hidden form
+   tokens + AJAX `X-CSRFToken` fetch interceptor (`templates/*.html`,
+   `static/js/csrf-header.js`, `app.py`). §77
+2. ✅ Rate limiting (Flask-Limiter) on login + mutating admin routes (`auth.py`). §76
+3. ✅ `/api/v1/` Blueprint + deprecation header on legacy `/api/`. §62
+4. ⬜ Generate OpenAPI 3.0 spec from routes — `docs/api-reference.md`. §§62,125
+5. ⬜ Persist `app.secret_key` to env file instead of dev default. § Iter 1
 > The old "Deploy + verify frontend redesign" task remains in progress — see
 > `START_HERE.md` routing table for details.
 

@@ -26,3 +26,13 @@ Flask-SocketIO>=5.3,<6
 # Werkzeug (above) provides check_password_hash/generate_password_hash
 # bcrypt is a transitive dependency of paramiko/Werkzeug, auto-installed
 
+# --- Security: CSRF Protection (§77) ---
+Flask-WTF>=1.2.1
+
+# --- Security: Rate Limiting (§76) ---
+Flask-Limiter>=3.5.1
+
+# --- Security: Password strength validation ---
+blinker>=1.9,<2
+
+

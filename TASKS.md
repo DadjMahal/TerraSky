@@ -211,9 +211,9 @@
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
-| task_0007 | Add CSRF protection (Flask-WTF) on all POST routes | ⬜ pending | | §77 | |
-| task_0008 | Add rate limiting (Flask-Limiter) on auth + API | ⬜ pending | | §76 | |
-| task_0009 | Add `/api/v1/` versioning prefix | ⬜ pending | | §62 | |
+| task_0007 | Add CSRF protection (Flask-WTF) on all POST routes | ✅ done | Cline | §77 | CSRFProtect(app) + hidden form tokens in login/admin + `/api/csrf-token` + `static/js/csrf-header.js` AJAX interceptor; py_compile OK |
+| task_0008 | Add rate limiting (Flask-Limiter) on auth + API | ✅ done | Cline | §76 | `auth.py` limiter (login 5/min, admin mutations 10-30/hr); py_compile OK |
+| task_0009 | Add `/api/v1/` versioning prefix | ✅ done | Cline | §62 | `api_v1` Blueprint + `X-API-Version: deprecated` header on legacy `/api/` (app.py) |
 | task_0010 | Generate OpenAPI 3.0 spec from routes | ⬜ pending | | §125 | |
 
 ### Iteration 2 — Provider Capabilities, Drift Detection
