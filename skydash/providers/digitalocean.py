@@ -39,6 +39,7 @@ _DROPLET_STATE_MAP = {
 
 class DigitalOceanProvider(CloudProvider):
     key = "digitalocean"
+    capabilities = ("read", "start", "stop", "reboot", "get_logs")
 
     def available(self) -> bool:
         # A personal access token is required to call the DO API at all.

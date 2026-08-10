@@ -17,6 +17,17 @@ class CloudProvider(abc.ABC):
 
     key: str = ""  # normalized provider key set by subclasses
 
+    #: Declared capabilities (§2.2, §10). Subclasses list what they support;
+    #: the UI and API surface capabilities dynamically instead of hard-coding
+    #: provider names. Unknown/empty = conservative (read-only).
+    capabilities: tuple[str, ...] = tuple()
+
+    def get_capabilities(self) -> list[str]:
+        """Return this provider's declared capabilities (§2.2 capability-based
+        architecture). The dashboard uses these to show only actions a
+        provider actually supports."""
+        return list(self.capabilities)
+
     @abc.abstractmethod
     def available(self) -> bool:
         """Return True if the SDK and credentials for this provider are present."""

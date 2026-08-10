@@ -31,6 +31,7 @@ _AZURE_POWER_MAP = {
 
 class AzureProvider(CloudProvider):
     key = "azure"
+    capabilities = ("read", "start", "stop", "reboot", "get_logs")
 
     # Cached clients to avoid repeated OAuth2 token acquisition
     _cached_client = None

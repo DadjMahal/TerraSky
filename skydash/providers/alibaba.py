@@ -29,6 +29,7 @@ _ALI_STATE_MAP = {
 
 class AlibabaProvider(CloudProvider):
     key = "alibaba"
+    capabilities = ("read", "start", "stop", "get_logs")
     _cached_client = None
     _client_lock = None
 

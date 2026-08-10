@@ -220,8 +220,8 @@
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
-| task_0011 | Extend `CloudProvider` with `get_capabilities()` | ⬜ pending | | §2.2, §10 | |
-| task_0012 | Add drift detection (tfstate vs live comparison) | ⬜ pending | | §15 | |
+| task_0011 | Extend `CloudProvider` with `get_capabilities()` | ✅ done | Cline | §2.2, §10 | `providers/base.py` capabilities + per-provider declarations + `GET /api/v1/providers` (registry import verified) |
+| task_0012 | Add drift detection (tfstate vs live comparison) | ⬜ pending | | §15 | Iter 3 (next) |
 | task_0013 | Standardize status model (use `models.py` constants everywhere) | ⬜ pending | | §43 | |
 
 ### Iteration 3 — Secrets Migration, RBAC, Audit Logging

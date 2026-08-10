@@ -19,6 +19,14 @@ _REGISTRY = {
     "digitalocean": DigitalOceanProvider(),
 }
 
+try:  # SSH-only custom provider (§9) — optional dependency (paramiko)
+    from providers.custom_ssh import CustomSSHProvider, custom_ssh_provider  # noqa: F401
+
+    _REGISTRY["custom_ssh"] = custom_ssh_provider
+    _CUSTOM_SSH_AVAILABLE = True
+except ImportError:  # pragma: no cover - paramiko absent
+    _CUSTOM_SSH_AVAILABLE = False
+
 
 def get_provider(key: str):
     """Return the provider instance for `key`, or None if unknown."""

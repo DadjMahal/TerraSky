@@ -216,3 +216,21 @@ def load_plugins():
 
 Wrap `hermes_agent.py` as a registered `CloudProvider` with capabilities:
 `reboot`, `execute_command`, `upload_file`, `download_file`, `service_restart`.
+
+## 6. Iteration 2 — Delivered (capability-based architecture)
+
+Implemented directly into the code (compile-verified; API not runtime-tested —
+no Flask here):
+
+| Item | § | What was added |
+|---|---|---|
+| Capability declaration | §2.2, §10 | `CloudProvider.capabilities` + `get_capabilities()` in `providers/base.py`; every provider declares its supported ops (awss/azure/do/oracle: read/start/stop/reboot/get_logs; alibaba: read/start/stop/get_logs; oracle: + get_instance_details) |
+| Capability discovery API | §2.2, §83 | `GET /api/v1/providers` returns `{key, capabilities, available}` per provider via `providers/registry.py` |
+| Custom SSH provider | §9, §18 | `providers/custom_ssh.py` — `CustomSSHProvider` reuses `hermes_agent` paramiko helpers; capabilities read/reboot/execute_command/service_restart/get_logs/disk/test_connection; power-off intentionally unsupported (no control plane); gracefully degrades when paramiko absent |
+| Feature contracts | §16, §20-24 | `features/{files,processes,services,docker,k8s}.py` — documented agent-side command contracts + limits (`§79`), each marked `FEATURE_STATUS="scaffold"` and BLOCKED on a deployed agent |
+| Graceful degradation | §83-84 | `v1_providers` never raises: a failing `available()` falls back to False; per-instance try/except already isolated in `/api/statuses` |
+
+**Verification:** `python3 -m py_compile` over all touched modules + registry import
+shows all 6 providers with correct capability lists and `available()=False` (no creds
+in this environment — the expected degraded state). **Runtime API verification + deploy
+pending.**

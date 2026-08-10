@@ -231,6 +231,27 @@ def v1_instance_logs(slug, log_type):
 from openapi import build_spec, SWAGGER_UI_HTML
 
 
+@api_v1.route("/providers")
+@login_required
+def v1_providers():
+    """GET /api/v1/providers — providers, declared capabilities, availability (§2.2, §10, §83, §84).
+
+    Capability-based: clients discover what each provider supports instead of
+    hard-coding provider names (spec §2.2). Availability is reported
+    per-provider so the dashboard can degrade gracefully.
+    """
+    from providers.registry import all_providers
+
+    rows = []
+    for p in all_providers():
+        try:
+            available = p.available()
+        except Exception:  # noqa: BLE001 - a failing provider must never break the list
+            available = False
+        rows.append({"key": p.key, "capabilities": p.get_capabilities(), "available": available})
+    return _envelop({"providers": rows})
+
+
 @api_v1.route("/openapi.json")
 @login_required
 def v1_openapi_json():

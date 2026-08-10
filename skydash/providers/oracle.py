@@ -32,6 +32,7 @@ _OCI_STATE_MAP = {
 
 class OracleProvider(CloudProvider):
     key = "oracle"
+    capabilities = ("read", "start", "stop", "reboot", "get_logs", "get_instance_details")
     _cached_client = None
     _cached_network_client = None
     _cached_config = None

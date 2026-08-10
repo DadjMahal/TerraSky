@@ -32,6 +32,7 @@ _EC2_STATE_MAP = {
 
 class AwsProvider(CloudProvider):
     key = "aws"
+    capabilities = ("read", "start", "stop", "reboot", "get_logs")
 
     def available(self) -> bool:
         # boto3 reads credentials from the environment, so presence of the key
