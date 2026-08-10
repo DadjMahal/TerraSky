@@ -38,20 +38,34 @@ $ curl -s http://localhost/login | grep -o '<title>[^<]*</title>'          # <ti
   the matching `*_ACCESS_KEY`/`ARM_*`/`OCI_*`/`ALICLOUD_*` env vars are present
   in `terraform/.env` (see Known Limitations).
 
-### ⚠️ Instance inventory not yet visible on this droplet
-The web stack is fully functional, but **0 instances render** because the two
-state/secret artifacts that lived on the previous Azure-2 server are absent here
-(and that host is unreachable):
-1. `terraform/terraform.tfstate` — the static inventory of all 7 managed VMs
-   (Hermes, Vikunja, Terraform, MMO_Server, MMSystem, Hunter, AlibabaPower).
-   Without it `state_reader.get_instances()` returns `[]`, so `/api/statuses`
-   → `[]` and no cards render. The state file is git-ignored and was never
-   committed; recover it from the old host's `/home/volodro/terraform/` (or a
-   backup) and `systemctl restart skydash`.
-2. Cloud provider credentials in `terraform/.env` (AWS_*, ARM_*, OCI_*,
-   ALICLOUD_*). Without them every provider's `get_status()` resolves to
-   `error` (no live power state / start-stop). Restore the `.env` (never commit
-   it) and `systemctl restart skydash` to enable live multi-cloud management.
+### ⚠️ Instance inventory — what's shown vs. what needs the old secrets
+The 7 declared VMs (Hermes, Vikunja, Terraform, MMO_Server, MMSystem, Hunter,
+AlibabaPower) now **render as dashboard cards** from a reconstructed
+`terraform.tfstate` whose static metadata (names/types/regions/zones/disk/tags)
+was transcribed verbatim from `terraform/*.tf` (generator:
+`terraform/generate_tfstate.py`). Live power-state/start-stop and public IPs are
+**not** available because:
+
+- the original `terraform.tfstate` (with cloud-assigned instance IDs) is gone with
+  the old Azure-2 host, so provider `get_status()` can't resolve real IDs;
+- the cloud credentials (`AWS_*`, `ARM_*`, `OCI_*`, `ALICLOUD_*` in `.env`) are
+  absent, so every provider's `available()` is `False`.
+
+Net effect on the dashboard: the 7 cards show real static info; status badge =
+`unknown`, Start/Stop disabled — an **honest** "known but not reachable" state,
+not fabricated. To restore full live management, copy the original
+`terraform.tfstate` + the real `terraform/.env` (cloud creds) from the old host
+or a backup, then `sudo systemctl restart skydash`.
+
+### ➕ DigitalOcean provider (added 2026-08-10)
+SkyDash had no DigitalOcean provider. One is now implemented
+(`providers/digitalocean.py`, DO API v2 via `requests`, lazy token from
+`DIGITALOCEAN_ACCESS_TOKEN`, degrades gracefully when the token is absent). To
+surface **your** DO droplets: get a DigitalOcean API token (read access to
+Droplets) and run `scripts/seed_digitalocean_state.py` — it lists your droplets
+via the API and writes real `digitalocean_droplet` entries into `terraform.tfstate`
+(preserving the 7 above), then `sudo systemctl restart skydash`. Awaiting your
+token to activate it (see ask in the session summary).
 
 ## ✅ Done & verified (w/ evidence)
 
