@@ -38,19 +38,20 @@ $ curl -s http://localhost/login | grep -o '<title>[^<]*</title>'          # <ti
   the matching `*_ACCESS_KEY`/`ARM_*`/`OCI_*`/`ALICLOUD_*` env vars are present
   in `terraform/.env` (see Known Limitations).
 
-### ✅ Instance inventory — all live & running (verified 2026-08-10, post-AWS-activate)
-User kept **AWS + DigitalOcean only**; Azure / Oracle / Alibaba pruned. Vikunja
-removed (only Hermes requested). All 4 remaining instances show live
-`running` status with real IPs and `can_manage=true` (Start/Stop enabled):
+### ✅ Instance inventory — all live & running (verified 2026-08-10, post-AWS+OCI-activate)
+User kept **AWS + DigitalOcean + Oracle**; Azure and Alibaba pruned. Vikunja
+removed (only Hermes requested). All 5 remaining instances show live `running`
+status with real IPs and `can_manage=true` (Start/Stop enabled):
 
-| Instance | Provider | Status | Public IP | EC2/Droplet ID |
-|----------|----------|--------|-----------|----------------|
+| Instance | Provider | Status | Public IP | Cloud ID |
+|----------|----------|--------|-----------|----------|
 | aws-hermes | aws | `running` ✅ | 63.179.97.116 | i-01b445d2825c75ab9 |
 | digital-1 | digitalocean | `running` ✅ | 207.154.201.40 | 591231372 |
 | digital-2 | digitalocean | `running` ✅ | 167.172.188.248 | 591231377 |
 | digital-3 | digitalocean | `running` ✅ | 167.71.32.118 | 591231381 |
+| oracle-hunter | oracle | `running` ✅ | 92.5.22.94 | ocid1.instance.oc1.eu-frankfurt-1.…wecmnv2ja |
 
-**DigitalOcean** — live. Token `DIGITALOCEAN_ACCESS_TOKEN` was stored in the
+**DigitalOcean** — live. Token `DIGITALOCEAN_ACCESS_TOKEN` stored in the
 git-ignored `terraform/.env` (chmod 600, volodro-owned). `seed_digitalocean_state.py`
 enumerated your 3 live droplets via the DO API v2 and wrote real entries (valid
 instance IDs, IPs) into state.
@@ -61,6 +62,14 @@ instance ID (`i-01b445d2825c75ab9`) was discovered by querying EC2 with
 `describe-instances --filters "Name=tag:Name,Values=Hermes"` and written into
 `terraform.tfstate`. `boto3` confirms `describe_instances` → state `running`, IP
 `63.179.97.116`, `can_manage=true`.
+
+**Oracle** — live. Credentials (`OCI_USER_OCID`, `OCI_TENANCY_OCID`,
+`OCI_FINGERPRINT`, `OCI_PRIVATE_KEY_PATH`, `OCI_REGION=eu-frankfurt-1`) stored in
+git-ignored `.env`. Private key PEM written to `/home/volodro/.oci/oci_api_key.pem`
+(chmod 600). The Hunter instance (display_name `retry-bot-server`) was discovered
+via `compute.list_instances` in eu-frankfurt-1; its OCID and compartment_id
+written into state. `oci` SDK confirms `get_instance` → state `RUNNING`, live IP
+`92.5.22.94`, `can_manage=true`.
 
 ## ✅ Done & verified (w/ evidence)
 
