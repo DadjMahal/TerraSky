@@ -38,34 +38,35 @@ $ curl -s http://localhost/login | grep -o '<title>[^<]*</title>'          # <ti
   the matching `*_ACCESS_KEY`/`ARM_*`/`OCI_*`/`ALICLOUD_*` env vars are present
   in `terraform/.env` (see Known Limitations).
 
-### ⚠️ Instance inventory — what's shown vs. what needs the old secrets
-The 7 declared VMs (Hermes, Vikunja, Terraform, MMO_Server, MMSystem, Hunter,
-AlibabaPower) now **render as dashboard cards** from a reconstructed
-`terraform.tfstate` whose static metadata (names/types/regions/zones/disk/tags)
-was transcribed verbatim from `terraform/*.tf` (generator:
-`terraform/generate_tfstate.py`). Live power-state/start-stop and public IPs are
-**not** available because:
+### ⚠️ Instance inventory — current (verified 2026-08-10, post-prune)
+User requested: keep **AWS + DigitalOcean only** — remove Azure, Oracle, Alibaba.
+The 5 removed resources (3 Azure VMs, 1 Oracle VM, 1 Alibaba VM) were pruned
+from `terraform/terraform.tfstate` (backup at `terraform.tfstate.bak.before_pruning`).
+The remaining 5 instances render as dashboard cards:
 
-- the original `terraform.tfstate` (with cloud-assigned instance IDs) is gone with
-  the old Azure-2 host, so provider `get_status()` can't resolve real IDs;
-- the cloud credentials (`AWS_*`, `ARM_*`, `OCI_*`, `ALICLOUD_*` in `.env`) are
-  absent, so every provider's `available()` is `False`.
+| Instance | Provider | Status | Public IP | can_manage |
+|----------|----------|--------|-----------|------------|
+| Hermes | aws | `unknown` ❌ | *(needs creds)* | false |
+| Vikunja | aws | `unknown` ❌ | *(needs creds)* | false |
+| digital-1 | digitalocean | `running` ✅ | 207.154.201.40 | true |
+| digital-2 | digitalocean | `running` ✅ | 167.172.188.248 | true |
+| digital-3 | digitalocean | `running` ✅ | 167.71.32.118 | true |
 
-Net effect on the dashboard: the 7 cards show real static info; status badge =
-`unknown`, Start/Stop disabled — an **honest** "known but not reachable" state,
-not fabricated. To restore full live management, copy the original
-`terraform.tfstate` + the real `terraform/.env` (cloud creds) from the old host
-or a backup, then `sudo systemctl restart skydash`.
+**DigitalOcean** — live. Token `DIGITALOCEAN_ACCESS_TOKEN` stored in the
+git-ignored `terraform/.env` (chmod 600, `volodro`-owned). `seed_digitalocean_state.py`
+enumerated your 3 live droplets via the DO API v2 and wrote real entries (valid
+instance IDs, IPs) into state. Status `running`, real IPs, Start/Stop enabled.
 
-### ➕ DigitalOcean provider (added 2026-08-10)
-SkyDash had no DigitalOcean provider. One is now implemented
-(`providers/digitalocean.py`, DO API v2 via `requests`, lazy token from
-`DIGITALOCEAN_ACCESS_TOKEN`, degrades gracefully when the token is absent). To
-surface **your** DO droplets: get a DigitalOcean API token (read access to
-Droplets) and run `scripts/seed_digitalocean_state.py` — it lists your droplets
-via the API and writes real `digitalocean_droplet` entries into `terraform.tfstate`
-(preserving the 7 above), then `sudo systemctl restart skydash`. Awaiting your
-token to activate it (see ask in the session summary).
+**AWS** — cards rendered from reconstructed state, but still `unknown`.
+`/api/statuses` returns `"Provider SDK/credentials not available"` because:
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` are absent from `terraform/.env`;
+- the reconstructed state has no EC2 instance IDs (`i-…`) — the original
+  `terraform.tfstate` (with cloud-assigned IDs) was on the old Azure-2 host.
+
+➡️ To activate AWS live management, provide: `AWS_ACCESS_KEY_ID` +
+`AWS_SECRET_ACCESS_KEY` (and optionally `AWS_DEFAULT_REGION=eu-central-1`).
+With those I can query EC2 by Name tag (`Hermes`, `Vikunja`), write the real
+instance IDs back into state, restart, and flip both cards to `running`.
 
 ## ✅ Done & verified (w/ evidence)
 
