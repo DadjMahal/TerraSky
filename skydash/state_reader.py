@@ -16,6 +16,7 @@ from models import (
     ALIBABA,
     AWS,
     AZURE,
+    DIGITALOCEAN,
     Instance,
     ORACLE,
     PROVIDER_LABELS,
@@ -33,6 +34,7 @@ RESOURCE_TYPE_PROVIDER = {
     "azurerm_windows_virtual_machine": AZURE,
     "oci_core_instance": ORACLE,
     "alicloud_instance": ALIBABA,
+    "digitalocean_droplet": DIGITALOCEAN,
 }
 
 
@@ -201,7 +203,39 @@ def _map_alibaba(attrs: dict) -> dict:
     )
 
 
-MAPPERS = {AWS: _map_aws, AZURE: _map_azure, ORACLE: _map_oracle, ALIBABA: _map_alibaba}
+def _map_digitalocean(attrs: dict) -> dict:
+    """Map a ``digitalocean_droplet`` state resource to dashboard fields.
+
+    DigitalOcean Terraform state attributes (flat): ``id``, ``name``, ``size``
+    (slug, e.g. ``s-2vcpu-2gb``), ``region`` (slug, e.g. ``nyc3``), ``image``,
+    ``ipv4_address``, ``ipv4_address_private``, ``tags`` (list), ``created_at``.
+    DO exposes regions, not availability zones. CPU/RAM are back-filled from the
+    instance_specs table in ``enrich_instance`` when the size slug is known.
+    """
+    tags = attrs.get("tags")
+    if isinstance(tags, list):
+        tags = {t: t for t in tags if t}
+    return dict(
+        display_name=attrs.get("name", ""),
+        instance_type=attrs.get("size", ""),
+        region=attrs.get("region", ""),
+        availability_zone="",
+        public_ip=attrs.get("ipv4_address", ""),
+        private_ip=attrs.get("ipv4_address_private", ""),
+        public_dns="",
+        private_dns="",
+        os=attrs.get("image", ""),
+        cpu="",
+        ram="",
+        disk_size="",
+        creation_date=attrs.get("created_at", ""),
+        tags=tags or {},
+        instance_id=str(attrs.get("id", "")) if attrs.get("id") else "",
+        extra={},
+    )
+
+
+MAPPERS = {AWS: _map_aws, AZURE: _map_azure, ORACLE: _map_oracle, ALIBABA: _map_alibaba, DIGITALOCEAN: _map_digitalocean}
 
 
 # --- Public API --------------------------------------------------------------

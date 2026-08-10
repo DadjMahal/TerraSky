@@ -8,6 +8,7 @@ from __future__ import annotations
 from providers.alibaba import AlibabaProvider
 from providers.aws import AwsProvider
 from providers.azure import AzureProvider
+from providers.digitalocean import DigitalOceanProvider
 from providers.oracle import OracleProvider
 
 _REGISTRY = {
@@ -15,6 +16,7 @@ _REGISTRY = {
     "azure": AzureProvider(),
     "oracle": OracleProvider(),
     "alibaba": AlibabaProvider(),
+    "digitalocean": DigitalOceanProvider(),
 }
 
 

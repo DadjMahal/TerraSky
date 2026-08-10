@@ -112,7 +112,22 @@ _ALIBABA_SPECS: dict[str, tuple[int, float]] = {
     "ecs.g6.large": (2, 8.0),
     "ecs.g6.xlarge": (4, 16.0),
     "ecs.c6.large": (2, 4.0),
-    "ecs.c6.xlarge": (4, 8.0),
+        "ecs.c6.xlarge": (4, 8.0),
+}
+
+# Common DigitalOcean Droplet size slugs -> (vCPU count, RAM in GB)
+_DIGITALOCEAN_SPECS: dict[str, tuple[int, float]] = {
+    "s-1vcpu-1gb": (1, 1.0),
+    "s-2vcpu-2gb": (2, 2.0),
+    "s-2vcpu-4gb": (2, 4.0),
+    "s-4vcpu-8gb": (4, 8.0),
+    "s-4vcpu-16gb": (4, 16.0),
+    "s-8vcpu-16gb": (8, 16.0),
+    "s-8vcpu-32gb": (8, 32.0),
+    "s-12vcpu-24gb": (12, 24.0),
+    "s-16vcpu-32gb": (16, 32.0),
+    "s-16vcpu-64gb": (16, 64.0),
+    "s-32vcpu-64gb": (32, 64.0),
 }
 
 # Merged lookup, keyed by (provider, instance_type)
@@ -121,6 +136,7 @@ _ALL_SPECS: dict[str, dict[str, tuple[int, float]]] = {
     "azure": _AZURE_SPECS,
     "oracle": _ORACLE_SPECS,
     "alibaba": _ALIBABA_SPECS,
+    "digitalocean": _DIGITALOCEAN_SPECS,
 }
 
 

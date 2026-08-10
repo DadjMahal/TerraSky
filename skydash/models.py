@@ -15,6 +15,7 @@ AWS = "aws"
 AZURE = "azure"
 ORACLE = "oracle"
 ALIBABA = "alibaba"
+DIGITALOCEAN = "digitalocean"
 
 # Bootstrap Icons used in the UI, keyed by normalized provider key.
 PROVIDER_ICONS = {
@@ -22,6 +23,7 @@ PROVIDER_ICONS = {
     AZURE: "bi-microsoft",
     ORACLE: "bi-cloud-fill",
     ALIBABA: "bi-cloud",
+    DIGITALOCEAN: "bi-server",
 }
 
 # Human readable labels for providers.
@@ -30,6 +32,7 @@ PROVIDER_LABELS = {
     AZURE: "Azure",
     ORACLE: "Oracle Cloud",
     ALIBABA: "Alibaba Cloud",
+    DIGITALOCEAN: "DigitalOcean",
 }
 
 # Normalized status values displayed throughout the UI.
