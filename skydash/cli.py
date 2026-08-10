@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+import policy as policy_engine
 from providers.registry import get_provider
 from state_reader import get_instance_by_slug, get_instances
 
@@ -58,6 +59,18 @@ def _mutating(args, action: str) -> int:
     if not inst:
         print(f"error: instance not found: {args.slug}", file=sys.stderr)
         return 2
+    # §107 environment protection: destructive actions on prod-tagged
+    # resources need an explicit --approve (until §66 approval system).
+    resource = inst.to_dict()
+    if action in policy_engine.DESTRUCTIVE_ACTIONS and policy_engine.is_prod_resource(resource):
+        if not getattr(args, "approve", False):
+            print(
+                f"PROD_SHIELD: '{action}' on production resource {getattr(args, 'slug', '')} "
+                f"is denied without approval. Re-run with --approve "
+                f"(and MFA once §68 lands).",
+                file=sys.stderr,
+            )
+            return 3
     provider = get_provider(inst.provider)
     if not provider or not provider.available():
         print("error: provider not available (check credentials/env)", file=sys.stderr)
@@ -75,8 +88,12 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("slug")
     sp = sub.add_parser("start", help="Start an instance")
     sp.add_argument("slug")
+    sp.add_argument("--approve", action="store_true",
+                    help="Approve prod-shielded action (§107; convention until §66)")
     sp = sub.add_parser("stop", help="Stop an instance")
     sp.add_argument("slug")
+    sp.add_argument("--approve", action="store_true",
+                    help="Approve prod-shielded action (§107; convention until §66)")
     args = parser.parse_args(argv)
 
     cmd_map = {"list": cmd_list, "status": cmd_status, "start": lambda a: _mutating(a, "start"), "stop": lambda a: _mutating(a, "stop")}

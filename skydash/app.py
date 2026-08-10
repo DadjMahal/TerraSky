@@ -26,6 +26,12 @@ import config_store
 import status_history
 from auth import limiter as auth_limiter
 
+# --- Security & Governance (Iteration 8; §31, §33-37, §67-68, §76-80, §107) ---
+import rbac
+import audit as audit_system
+import policy as policy_engine
+import security_checklist
+
 
 def _apply_overrides(inst_dict: dict) -> dict:
     """Apply instance display overrides (display_name, description, tags) from config_store."""
@@ -84,6 +90,80 @@ def _add_deprecation_header(response):
 def _envelop(data, status="ok"):
     return jsonify({"status": status, "data": data})
 
+
+def _action_approval():
+    """Approval token for prod-shielded actions (§107, convention until §66).
+
+    Reads ``approval`` from the JSON/form body; accepted values are the
+    resource slug itself (type-resource-name pattern per §133) or
+    ``prod:<slug>``. The real approval workflow (§66) + MFA (§68) are BLOCKED.
+    """
+    data = request.get_json(silent=True) or request.form
+    if not isinstance(data, dict):
+        data = {}
+    return str(data.get("approval", "") or "")
+
+
+def _prod_shield_guard(inst, action: str, legacy: bool = False):
+    """Enforce §107 production protection for instance actions.
+
+    Returns ``None`` when the action may proceed, otherwise a
+    ``(response, status)`` tuple for the route to return. ``legacy=True``
+    emits the pre-v1 ``{"ok": ...}`` response shape used by
+    ``/instance/<slug>/<action>``. Additive and fail-closed: untagged
+    instances (no ``env``/``tier`` tags) are unaffected.
+    """
+    resource = inst.to_dict()
+    approval = _action_approval()
+    ref = f"request:{request.remote_addr}:{action}:{get_current_user() or '?'}"
+    decision = policy_engine.prod_shield(
+        resource,
+        f"server.{action}",
+        approved=bool(approval) and approval in (resource.get("slug"), f"prod:{resource.get('slug')}"),
+        approval_ref=ref,
+    )
+    if decision["allowed"]:
+        return None
+    audit_system.add(
+        actor=get_current_user() or "anonymous",
+        action=f"server.{action}",
+        resource=f"instances/{resource.get('slug')}",
+        detail={"decision": decision["code"], "approved": False, "prod": True},
+        ip=request.remote_addr,
+        outcome="denied",
+    )
+    if legacy:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "message": decision["reason"],
+                    "code": decision["code"],
+                    "status": "error",
+                }
+            ),
+            403,
+        )
+    return jsonify({"status": "error", "error": decision["reason"], "code": decision["code"]}), 403
+
+
+@api_v1.route("/security/checklist")
+@login_required
+def v1_security_checklist():
+    """GET /api/v1/security/checklist — implemented/pending governance matrix (§76-77, §80).
+
+    Read-only; sources the small register in ``security_checklist.py`` so
+    governance status is queryable by scripts/auditors/AI agents. BLOCKED
+    items carry their exact requirement in ``note``.
+    """
+    return _envelop(
+        {
+            "items": security_checklist.get_checklist(),
+            "summary": security_checklist.summary(),
+            "source": "skydash/security_checklist.py",
+        }
+    )
+
 @api_v1.route("/statuses")
 @login_required
 def v1_statuses():
@@ -105,6 +185,10 @@ def v1_instance_detail(slug):
 @api_v1.route("/instances/<slug>/<action>", methods=["POST"])
 @auth_limiter.limit("10 per minute")
 @login_required
+@audit_system.audited(
+    action=lambda slug, action: f"server.{action}",
+    resource=lambda slug, action: f"instances/{slug}",
+)
 def v1_instance_action(slug, action):
     """POST /api/v1/instances/<slug>/<action> — start/stop (standardized)."""
     inst = get_instance_by_slug(slug)
@@ -112,6 +196,10 @@ def v1_instance_action(slug, action):
         return jsonify({"status": "error", "error": "Instance not found", "code": "NOT_FOUND"}), 404
     if action not in ("start", "stop"):
         return jsonify({"status": "error", "error": "Invalid action", "code": "INVALID_ACTION"}), 400
+    # §107 environment protection — production resources need approval to stop.
+    blocked = _prod_shield_guard(inst, action)
+    if blocked is not None:
+        return blocked
     provider = get_provider(inst.provider)
     if not provider or not provider.available():
         return jsonify({"status": "error", "error": "Provider not available", "code": "PROVIDER_UNAVAILABLE"}), 503
@@ -523,12 +611,20 @@ def _ssh_disconnect():  # pragma: no cover - realtime handler
 @app.route("/instance/<slug>/<action>", methods=["POST"])
 @auth_limiter.limit("10 per minute")
 @login_required
+@audit_system.audited(
+    action=lambda slug, action: f"server.{action}",
+    resource=lambda slug, action: f"instances/{slug}",
+)
 def instance_action(slug: str, action: str):
     inst = get_instance_by_slug(slug)
     if not inst:
-        return jsonify({"ok": False, "message": "Instance not found"}), 404
+        return jsonify({"ok": False, "message": "Instance not found", "code": "NOT_FOUND"}), 404
     if action not in ("start", "stop"):
         return jsonify({"ok": False, "message": "Invalid action"}), 400
+    # §107 environment protection — production resources need approval to stop.
+    blocked = _prod_shield_guard(inst, action, legacy=True)
+    if blocked is not None:
+        return blocked
     provider = get_provider(inst.provider)
     if not provider or not provider.available():
         return jsonify({"ok": False, "message": "Provider not available"})
@@ -639,6 +735,7 @@ def hermes_test_connection(slug: str):
 # --- Admin routes ---
 
 @app.route("/admin")
+@require_role(rbac.ADMIN)
 @login_required
 def admin_panel():
     """Admin panel with site settings, profile, and instance management."""
@@ -658,7 +755,9 @@ def admin_panel():
 
 @app.route("/admin/settings", methods=["POST"])
 @auth_limiter.limit("5 per hour")
+@require_role(rbac.ADMIN)
 @login_required
+@audit_system.audited(action="settings.update")
 def admin_save_settings():
     """Save site settings (name, description, favicon, logo)."""
     config_store.update_site_settings(
@@ -673,7 +772,9 @@ def admin_save_settings():
 
 @app.route("/admin/profile", methods=["POST"])
 @auth_limiter.limit("10 per hour")
+@require_role(rbac.ADMIN)
 @login_required
+@audit_system.audited(action="profile.update")
 def admin_save_profile():
     """Save admin profile (username, email)."""
     config_store.update_profile(
@@ -686,7 +787,9 @@ def admin_save_profile():
 
 @app.route("/admin/password", methods=["POST"])
 @auth_limiter.limit("3 per hour")
+@require_role(rbac.ADMIN)
 @login_required
+@audit_system.audited(action="password.change")
 def admin_change_password():
     """Change admin password."""
     current_pw = request.form.get("current_password", "")
@@ -710,7 +813,9 @@ def admin_change_password():
 
 @app.route("/admin/instance/<slug>/hide")
 @auth_limiter.limit("30 per hour")
+@require_role(rbac.ADMIN)
 @login_required
+@audit_system.audited(action="instance.hide", resource=lambda slug: f"instances/{slug}")
 def admin_hide_instance(slug: str):
     """Hide an instance from the dashboard."""
     config_store.hide_instance(slug)
@@ -720,7 +825,9 @@ def admin_hide_instance(slug: str):
 
 @app.route("/admin/instance/<slug>/unhide")
 @auth_limiter.limit("30 per hour")
+@require_role(rbac.ADMIN)
 @login_required
+@audit_system.audited(action="instance.unhide", resource=lambda slug: f"instances/{slug}")
 def admin_unhide_instance(slug: str):
     """Unhide an instance from the dashboard."""
     config_store.unhide_instance(slug)
@@ -730,7 +837,9 @@ def admin_unhide_instance(slug: str):
 
 @app.route("/admin/instance/add", methods=["POST"])
 @auth_limiter.limit("10 per hour")
+@require_role(rbac.ADMIN)
 @login_required
+@audit_system.audited(action="instance.add")
 def admin_add_instance():
     """Add a custom instance manually."""
     config_store.add_custom_instance(
@@ -746,7 +855,9 @@ def admin_add_instance():
 
 @app.route("/admin/instance/<instance_id>/remove")
 @auth_limiter.limit("10 per hour")
+@require_role(rbac.ADMIN)
 @login_required
+@audit_system.audited(action="instance.remove", resource=lambda instance_id: f"instances/{instance_id}")
 def admin_remove_instance(instance_id: str):
     """Remove a custom instance."""
     config_store.remove_custom_instance(instance_id)
@@ -755,7 +866,9 @@ def admin_remove_instance(instance_id: str):
 
 @app.route("/admin/instance/<slug>/edit", methods=["POST"])
 @auth_limiter.limit("30 per hour")
+@require_role(rbac.ADMIN)
 @login_required
+@audit_system.audited(action="instance.edit", resource=lambda slug: f"instances/{slug}")
 def admin_edit_instance(slug: str):
     """Edit instance display name, description, and tags."""
     display_name = request.form.get("display_name", "").strip()
@@ -768,6 +881,7 @@ def admin_edit_instance(slug: str):
 
 
 @app.route("/admin/instance/<slug>/edit")
+@require_role(rbac.ADMIN)
 @login_required
 def admin_edit_instance_form(slug: str):
     """Show edit form for an instance."""

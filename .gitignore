@@ -59,5 +59,9 @@ skydash/autostart.log
 skydash/status_history.json*
 skydash/.env
 
+# Audit trail (append-only JSONL, §37) — NEVER commit; machine-generated
+skydash/audit_logs/
+skydash/audit_logs/*.jsonl
+
 # Cline session data (large, private)
 .cline/

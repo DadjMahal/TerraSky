@@ -228,9 +228,9 @@
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
-| task_0014 | Migrate secrets to Vault/Secrets Manager | ⬜ pending | | §29, §69 | |
-| task_0015 | Implement RBAC roles (admin/user/read-only) | ⬜ pending | | §33, §34 | |
-| task_0016 | Add audit logging (structured, append-only) | ⬜ pending | | §37, §81 | |
+| task_0014 | Migrate secrets to Vault/Secrets Manager | 🔵 partial | Cline | §29, §69 | `crypto.py` AES-256-GCM seal/unseal + `SKYDASH_SECRETS_KEY` convention (runtime-tested); Vault/KMS backend BLOCKED — external service (Iter 10) |
+| task_0015 | Implement RBAC roles (admin/user/read-only) | ✅ done | Cline | §33, §34 | `rbac.py` (admin/operator/readonly hierarchy, require_role/require_permission → 403 FORBIDDEN) wired onto all admin routes; escalation bug found+fixed in review; unit-tested |
+| task_0016 | Add audit logging (structured, append-only) | ✅ done | Cline | §37, §81 | `audit.py` append-only JSONL + SHA-256 hash chain, `@audited` on mutating admin + instance-action routes, query + verify_chain; tamper-detection unit-tested |
 
 ### Iteration 4 — UI Safety, Activity Timeline, Notifications
 
@@ -281,7 +281,7 @@
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
-| task_0033 | OPA/Conftest policy gate on plans | ⬜ pending | | §67-68 | |
+| task_0033 | OPA/Conftest policy gate on plans | 🔵 partial | Cline | §67-68 | in-process `policy.py` (policies-as-data evaluate/allowed + prod_shield on start/stop); OPA/Conftest engine BLOCKED — external binary not installed |
 | task_0034 | Multi-tenancy (Org/Project isolation) | ⬜ pending | | §35-36 | |
 | task_0035 | GitOps workflow | ⬜ pending | | §65, §66 | |
 

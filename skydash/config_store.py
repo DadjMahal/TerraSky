@@ -22,6 +22,7 @@ DEFAULT_CONFIG: dict = {
     "admin_username": "admin",
     "admin_email": "",
     "admin_password_hash": "",  # empty = use SKYDASH_ADMIN_PASSWORD env var
+    "role": "admin",            # RBAC role of the built-in profile (§33; rbac.py)
     "hidden_instances": [],     # slugs to hide from dashboard
     "instance_overrides": {},   # slug -> {display_name, description, tags}
     "custom_instances": [],     # manually added instances
@@ -94,6 +95,30 @@ def update_profile(username: str | None = None, email: str | None = None):
     if email is not None:
         config["admin_email"] = email
     save_config(config)
+
+
+def get_user_role(username: str | None = None) -> str:
+    """Resolve the RBAC role for a username (single-profile model today).
+
+    All users resolve to the one profile's ``role`` field (default ``admin``)
+    until the multi-user/team model lands (rbac.resolve_role, Iter 9/10).
+    """
+    return str(load_config().get("role", "admin"))
+
+
+def set_user_role(role: str) -> str:
+    """Persist the profile role (validated against rbac.VALID_ROLES).
+
+    Additive and opt-in: the default remains ``admin``, so existing
+    deployments keep exactly their current behavior.
+    """
+    from rbac import VALID_ROLES
+
+    role = role if role in VALID_ROLES else "admin"
+    config = load_config()
+    config["role"] = role
+    save_config(config)
+    return role
 
 
 def update_site_settings(site_name: str | None = None, site_description: str | None = None,

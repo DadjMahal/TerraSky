@@ -154,10 +154,27 @@ environment and the production droplet has not been redeployed yet). See
    `static/js/csrf-header.js`, `app.py`). §77
 2. ✅ Rate limiting (Flask-Limiter) on login + mutating admin routes (`auth.py`). §76
 3. ✅ `/api/v1/` Blueprint + deprecation header on legacy `/api/`. §62
-4. ⬜ Generate OpenAPI 3.0 spec from routes — `docs/api-reference.md`. §§62,125
+4. ✅ OpenAPI 3.0 spec + Swagger UI (`skydash/openapi.py`; `/api/v1/openapi.json`, `/api/v1/docs`). §§62,125
 5. ⬜ Persist `app.secret_key` to env file instead of dev default. § Iter 1
 > The old "Deploy + verify frontend redesign" task remains in progress — see
 > `START_HERE.md` routing table for details.
+
+## 🛡️ Iteration 8 — Security & Governance (delivered, runtime-tested)
+
+Code + unit tests shipped (real runtime verification — no Flask needed):
+
+| Module | § | Verified |
+|---|---|---|
+| `crypto.py` | §31 AES-256-GCM (PBKDF2, salt-in-token) | round-trip + wrong-key/tamper-reject test PASS |
+| `rbac.py` | §33-34 admin/operator/readonly + 403 FORBIDDEN | hierarchy test PASS (escalation bug fixed in review) |
+| `audit.py` | §37 append-only JSONL + SHA-256 chain | append/query/tamper-detection test PASS |
+| `policy.py` | §67-68, §107 policies-as-data + `prod_shield` | deny/approve/dev tests PASS |
+| `security_checklist.py` | §76-80 matrix via `GET /api/v1/security/checklist` | read-only endpoint wired |
+
+Wiring: `@audited` + `@rbac.require_role(admin)` on mutating admin/instance routes; prod-shield on start/stop
+(§107); CLI `--approve`; OpenAPI `# /security/checklist`. Tests: `python3 skydash/tests/test_governance.py`.
+Flask-runtime + deploy verification still PENDING (no Flask here / no droplet redeploy).
+See `docs/security-governance-iter8.md` for the BLOCKED matrix (Vault/MFA/PostgreSQL/OPA = Iter 10 or user decision).
 
 ## ⚙️ How to refresh this
 

@@ -18,6 +18,12 @@ alibabacloud-tea-openapi==0.4.5
 # --- SSH (Hermes Agent log retrieval) ---
 paramiko==5.0.0
 
+# --- Encryption at rest (§31) ---
+# cryptography (AES-256-GCM via hazmat AESGCM + PBKDF2-HMAC-SHA256) is a
+# TRANSITIVE dependency of paramiko above — no separate pin needed. SkyDash
+# reads the master passphrase from SKYDASH_SECRETS_KEY (git-ignored env file);
+# see skydash/crypto.py.
+
 # --- Real-time SSH terminal (#16, xterm.js <-> paramiko bridge) ---
 # Flask-SocketIO pulls in compatible python-socketio/engineio automatically.
 Flask-SocketIO>=5.3,<6

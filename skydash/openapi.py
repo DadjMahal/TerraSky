@@ -127,4 +127,14 @@ def _paths(er: Any) -> dict[str, Any]:
                 "responses": {"200": ok, "401": er("Unauthorized"), "404": er("NotFound"), "503": er("ProviderUnavailable")},
             }
         },
+        "/security/checklist": {
+            "get": {
+                "tags": ["Security"],
+                "summary": "Implemented/pending security & governance matrix (§76-77, §80)",
+                "description": "Read-only register of security controls and their status "
+                "(implemented/partial/blocked/pending); BLOCKED items carry the exact "
+                "external requirement in their note.",
+                "responses": {"200": ok, "401": er("Unauthorized")},
+            }
+        },
     }
