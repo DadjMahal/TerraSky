@@ -12,8 +12,8 @@ static inventory from `terraform/terraform.tfstate`, fetches live power state an
 performs start/stop via each cloud's official Python SDK (lazy-imported to save RAM).
 
 - **Stack:** Flask (app.py) · 4 provider SDKs (providers/) · nginx + systemd · GitHub Actions
-- **Server:** Ubuntu 24.04, 1 GB RAM, no Docker
-- **Honest status:** live on http://74.248.232.219/ via nginx→systemd Flask (see STATUS.md)
+- **Server:** Ubuntu 24.04 LTS, DigitalOcean droplet, 8 GB RAM, no Docker
+- **Honest status:** live on http://167.172.188.248/ via nginx→systemd Flask (see STATUS.md)
 
 ## The 7 Hard Rules
 

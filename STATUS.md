@@ -3,24 +3,55 @@
 > **Update after every milestone.** Only list what is **verified** (with evidence),
 > never "claimed". Run `scripts/status.sh` to regenerate live status.
 
-## 🔄 Service status (verified 2026-08-04)
+## 🔄 Service status (verified 2026-08-10)
+
+> **Fresh DigitalOcean droplet deployment.** The agent was moved off the
+> previous Azure-2 VPS (`74.248.232.219`, now unreachable) and redeployed on a
+> new Ubuntu 24.04 droplet at `167.172.188.248`. The web stack (Flask + nginx +
+> systemd) was re-created from this repo against the documented production layout
+> `/home/volodro/{skydash,terraform,deploy/nginx,scripts}` using the
+> `skydash.service` systemd unit.
 
 ```bash
-$ systemctl is-active skydash.service
-active
-
+$ systemctl is-active skydash.service        # active
 $ ss -tlnp | grep -E ':80 |:8080 '
-LISTEN  0  511  0.0.0.0:80   ...  users:(("nginx"...))
-LISTEN  0  128  0.0.0.0:8080 ...  users:(("python", pid=...,"app.py"))
+LISTEN 0  511 0.0.0.0:80    ... users:(("nginx"...))
+LISTEN 0  128 0.0.0.0:8080  ... users:(("python","app.py",pid=5642))
+$ curl -s -o /dev/null -w "%{http_code}\n" http://localhost/login          # 200
+$ curl -s http://localhost/login | grep -o '<title>[^<]*</title>'          # <title>Sign in | SkyDash</title>
 ```
 - ✅ **skydash.service active** (systemd), Flask on :8080
 - ✅ **nginx reverse proxy** on :80 → 127.0.0.1:8080 (`deploy/nginx/skydash.conf`)
-- ✅ **Public site live:** http://74.248.232.219/ — `/login` → HTTP 200,
-  title `<title>Login &mdash; SkyDash</title>`
-- ✅ **CI/CD:** GitHub Actions "Deploy SkyDash to Production" — last run SUCCESS
-  (sync + configure nginx + systemd restart + health check)
-- ✅ **Providers** (per instance): AWS OK; Azure/Oracle/Alibaba need SDKs present
-  in the deployment venv — see Known Limitations below.
+- ✅ **Public site live:** http://167.172.188.248/ — `/login` → HTTP 200,
+  title `<title>Sign in | SkyDash</title>` (post-redesign title).
+- ✅ **Login + dashboard end-to-end:** POST `/login` (admin/admin) → 302 → `/`
+  (200, "Dashboard | SkyDash"); `/api/statuses` + `/api/load` → 200; static
+  CSS/JS assets → 200. Verified against the public IP (UFW inactive, nginx on
+  0.0.0.0:80).
+- ✅ **CI/CD:** GitHub Actions `deploy.yml` (sync → nginx → systemd → health
+  check). Note: that workflow SSHes in as `volodro@SERVER_IP`; on this fresh
+  droplet the `volodro` user + deploy key must be configured for Actions to
+  re-run (the unit file + nginx config are already installed locally).
+- ✅ **Providers / SDKs:** All four provider SDKs (boto3, azure-mgmt-compute,
+  oci, alibabacloud-ecs20140526) + Flask-SocketIO + paramiko are installed in
+  `/home/volodro/skydash/venv` (70 packages). `available()` returns False until
+  the matching `*_ACCESS_KEY`/`ARM_*`/`OCI_*`/`ALICLOUD_*` env vars are present
+  in `terraform/.env` (see Known Limitations).
+
+### ⚠️ Instance inventory not yet visible on this droplet
+The web stack is fully functional, but **0 instances render** because the two
+state/secret artifacts that lived on the previous Azure-2 server are absent here
+(and that host is unreachable):
+1. `terraform/terraform.tfstate` — the static inventory of all 7 managed VMs
+   (Hermes, Vikunja, Terraform, MMO_Server, MMSystem, Hunter, AlibabaPower).
+   Without it `state_reader.get_instances()` returns `[]`, so `/api/statuses`
+   → `[]` and no cards render. The state file is git-ignored and was never
+   committed; recover it from the old host's `/home/volodro/terraform/` (or a
+   backup) and `systemctl restart skydash`.
+2. Cloud provider credentials in `terraform/.env` (AWS_*, ARM_*, OCI_*,
+   ALICLOUD_*). Without them every provider's `get_status()` resolves to
+   `error` (no live power state / start-stop). Restore the `.env` (never commit
+   it) and `systemctl restart skydash` to enable live multi-cloud management.
 
 ## ✅ Done & verified (w/ evidence)
 
