@@ -420,3 +420,19 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .text-muted { color: var(--text-muted) !important; }
 .text-faint { color: var(--text-faint) !important; }
 hr { border-color: var(--border); opacity: 1; }
+
+/* Iteration 4 — skeleton loading states (§86) and notifications (§60) */
+.skeleton {
+    background: linear-gradient(90deg, var(--border, rgba(150,170,210,.12)) 25%,
+                                       rgba(150,170,210,.28) 37%,
+                                       var(--border, rgba(150,170,210,.12)) 63%);
+    background-size: 400% 100%;
+    animation: skydash-shimmer 1.4s infinite;
+    border-radius: 8px;
+}
+@keyframes skydash-shimmer {
+    0%   { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
+.notif-item .dropdown-item { white-space: normal; }
+#notif-count { font-size: 0.6rem; }

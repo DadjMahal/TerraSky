@@ -14,7 +14,7 @@
     async function render(slug) {
         const host = document.getElementById("metrics-host");
         if (!host) return;
-        host.innerHTML = '<div class="text-muted">Loading&hellip;</div>';
+        host.innerHTML = '<div class="row g-3"><div class="col-md-6"><div class="skeleton" style="height:230px"></div></div><div class="col-md-6"><div class="skeleton" style="height:230px"></div></div></div>';
         try {
             const res = await fetch(`/api/metrics/${slug}`, { cache: "no-store" });
             const m = await res.json();

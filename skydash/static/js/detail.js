@@ -61,7 +61,9 @@
             if (pubEl && s.public_ip) pubEl.textContent = s.public_ip;
             if (privEl && s.private_ip) privEl.textContent = s.private_ip;
             const grp = document.getElementById("action-group");
-            if (grp) grp.querySelectorAll('button[data-action="start"], button[data-action="stop"]').forEach(b => b.disabled = !s.can_manage);
+            if (grp) grp.querySelectorAll('button[data-action="start"]').forEach(b => b.disabled = !s.can_manage);
+            const dz = document.getElementById("danger-zone");
+            if (dz) dz.querySelectorAll("button[data-danger-action]").forEach(b => b.disabled = !s.can_manage);
         } catch (e) { setBadge("error"); }
     }
 
@@ -230,6 +232,83 @@
             if (id === "#tab-ssh" && window.SkyDashSSHTerminal) window.SkyDashSSHTerminal.init(SLUG);
         }));
     });
+
+    // ---- Danger-zone (#86): destructive ops need typed confirmation --------
+    function typedConfirm(label, expected) {
+        return new Promise((resolve) => {
+            const modal = document.createElement("div");
+            modal.className = "modal fade";
+            modal.tabIndex = -1;
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2 text-danger"></i>${label}</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                      <p>This is a destructive operation. Type <code>${expected}</code> to confirm.</p>
+                      <input type="text" class="form-control" id="danger-input" placeholder="${expected}" autocomplete="off">
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                      <button type="button" class="btn btn-danger" id="danger-confirm" disabled>Confirm</button>
+                    </div>
+                  </div>
+                </div>`;
+            document.body.appendChild(modal);
+            const m = new bootstrap.Modal(modal);
+            const input = modal.querySelector("#danger-input");
+            const confirmBtn = modal.querySelector("#danger-confirm");
+            input.addEventListener("input", () => { confirmBtn.disabled = input.value.trim() !== expected; });
+            confirmBtn.addEventListener("click", () => { m.hide(); modal.remove(); resolve(true); });
+            modal.addEventListener("hidden.bs.modal", () => { modal.remove(); resolve(false); });
+            m.show();
+        });
+    }
+
+    const dangerZone = document.getElementById("danger-zone");
+    if (dangerZone) {
+        dangerZone.addEventListener("click", async (ev) => {
+            const btn = ev.target.closest("button[data-danger-action]");
+            if (!btn) return;
+            const action = btn.dataset.dangerAction;
+            const note = document.getElementById("danger-zone-note");
+            if (note) note.textContent = "";
+            const ok = await typedConfirm(`Stop ${SLUG}?`, SLUG);
+            if (!ok) return;
+            const stages = ["Sending stop request to cloud API", "Polling for status change", "Instance is stopped"];
+            showProgress(stages);
+            setStage(0, "active");
+            setBadge("stopping");
+            try {
+                const res = await fetch(`/instance/${SLUG}/${action}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ approval: SLUG }) // §107 approval-token convention
+                });
+                const data = await res.json();
+                if (!data.ok) {
+                    if (note && (data.message || data.error)) note.textContent = data.message || data.error;
+                    setStage(0, "done");
+                    setBadge("error");
+                    showToast(`${action} denied: ${data.message || data.error || "forbidden"}`, false);
+                    return;
+                }
+                setStage(0, "done"); setStage(1, "active");
+                const settled = await pollDetailStatus("stopped", () => {});
+                setStage(1, "done");
+                if (settled) { setStage(2, "done"); showToast(`${SLUG} is now STOPPED`, true); }
+                else { showToast(`${SLUG}: stop sent but status not yet confirmed`, false); }
+            } catch (e) {
+                showToast(`${action} request failed: ${e.message}`, false);
+                setBadge("error");
+            } finally {
+                setTimeout(hideProgress, 1500);
+                refreshStatus();
+            }
+        });
+    }
 
     window.SkyDashDetail = { refreshStatus, setBadge, showToast };
 })();

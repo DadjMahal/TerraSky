@@ -149,3 +149,20 @@
     border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--border-strong);
 }
 .timeline .tl-event .tl-time { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-faint); margin-top: 0.4rem; }
+
+/* Iteration 4 — UI safety (§86) & feature placeholders (§20-23) */
+.danger-zone {
+    border: 1px dashed var(--border, rgba(150, 170, 210, 0.35));
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    background: rgba(239, 68, 68, 0.04);
+}
+.danger-title { color: var(--text-danger, #ef4444); }
+.feature-placeholder {
+    border: 1px dashed var(--border, rgba(150, 170, 210, 0.35));
+    border-radius: 10px;
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted, #93A2C2);
+}
+.managed-badge { margin-left: 0.5rem; vertical-align: middle; font-weight: 500; }

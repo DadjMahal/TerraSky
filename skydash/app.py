@@ -266,6 +266,19 @@ def v1_drift():
     return _envelop({"instances": results, "summary": summarize(results)})
 
 
+@api_v1.route("/notifications")
+@login_required
+def v1_notifications():
+    """GET /api/v1/notifications — recent status events across the fleet (§60).
+
+    Backed by the append-only per-instance status history (newest first).
+    """
+    from status_history import recent_events
+
+    events = recent_events([i.slug for i in get_instances()], limit=20)
+    return _envelop({"notifications": events})
+
+
 @api_v1.route("/topology")
 @login_required
 def v1_topology():

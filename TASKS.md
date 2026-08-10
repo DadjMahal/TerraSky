@@ -236,9 +236,9 @@
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
-| task_0017 | Danger-zone separation for destroy/reboot | ⬜ pending | | §86 | |
-| task_0018 | Activity timeline (§87) | ⬜ pending | | §87 | |
-| task_0019 | Notification center / toast system | ⬜ pending | | §60 | |
+| task_0017 | Danger-zone separation for destroy/reboot | ✅ done | Cline | §86 | detail.html Danger zone (stop moved, typed-confirm modal w/ §107 approval token) + managed/unmanaged badge; `node --check` OK |
+| task_0018 | Activity timeline (§87) | ✅ done | Cline | §87 | status-timeline tab already shipped (`status_history.py` + `status-timeline.js`); retro-added `recent_events()` assistant, unit-tested |
+| task_0019 | Notification center / toast system | ✅ done | Cline | §60 | navbar bell + `static/js/notifications.js` consuming `GET /api/v1/notifications` (status events, newest-first, unit-tested) |
 
 ### Iteration 5 — Terraform Integration
 

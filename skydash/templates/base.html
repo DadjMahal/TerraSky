@@ -46,6 +46,16 @@
             </button>
             {% if current_user %}
             <span class="text-muted small d-none d-md-inline"><i class="bi bi-person-circle"></i> {{ current_user }}</span>
+            <div class="dropdown" id="notif-wrap">
+                <button class="btn btn-console btn-sm position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+                    <i class="bi bi-bell"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="notif-count">0</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" id="notif-menu" style="width:320px;max-height:340px;overflow:auto;">
+                    <li class="dropdown-item-text small fw-semibold text-uppercase">Notifications</li>
+                    <li class="dropdown-item-text small text-faint" id="notif-empty">No recent events.</li>
+                </ul>
+            </div>
             <a href="/admin" class="btn btn-console btn-sm" title="Admin settings"><i class="bi bi-gear"></i></a>
             <a href="/logout" class="btn btn-console btn-sm" title="Log out"><i class="bi bi-box-arrow-right"></i></a>
             {% endif %}
@@ -66,6 +76,8 @@
     {% endwith %}
     {% block content %}{% endblock %}
 </div>
+
+<script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
 
 <div class="footer">{{ site_name }} &middot; Multi-cloud infrastructure console &middot; Flask</div>
 

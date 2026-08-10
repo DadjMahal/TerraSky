@@ -54,3 +54,18 @@ def get_history(slug: str) -> list:
     """Return the chronological status transitions for a slug (oldest→newest)."""
     with _lock:
         return list(_load().get(slug, []))
+
+
+def recent_events(slugs: list[str], limit: int = 20) -> list:
+    """Flatten the latest status transitions across slugs into notifications (§60).
+
+    Each event is ``{"slug", "ts", "status"}``, newest first. Pure function of
+    the stored history — unit-testable without any Flask/cloud dependencies.
+    """
+    events = []
+    for slug in slugs:
+        for entry in get_history(slug):
+            ev = {"slug": slug, "ts": entry.get("ts"), "status": entry.get("status")}
+            events.append(ev)
+    events.sort(key=lambda e: (e.get("ts") or 0), reverse=True)
+    return events[:limit]

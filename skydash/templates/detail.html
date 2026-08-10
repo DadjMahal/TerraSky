@@ -15,6 +15,11 @@
             <span class="text-faint fs-6 fw-normal">{{ inst.provider_label }}</span>
         </h1>
         <span class="status-pill status-loading" id="status-badge" data-status="{{ inst.status }}"><span class="beacon-dot"></span>Loading</span>
+        {% if inst.can_manage %}
+        <span class="managed-badge badge bg-success-subtle text-success-emphasis border border-success-subtle"><i class="bi bi-shield-check"></i> Managed</span>
+        {% else %}
+        <span class="managed-badge badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle"><i class="bi bi-eye-slash"></i> Unmanaged</span>
+        {% endif %}
     </div>
 
     {# --- Tabbed interface --- #}
@@ -23,6 +28,10 @@
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-hardware"><i class="bi bi-cpu"></i> Hardware</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-network"><i class="bi bi-diagram-3"></i> Network</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-actions"><i class="bi bi-sliders"></i> Actions</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-files"><i class="bi bi-folder2-open"></i> Files</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-processes"><i class="bi bi-cpu"></i> Processes</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-services"><i class="bi bi-gear"></i> Services</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-docker"><i class="bi bi-box-seam"></i> Docker</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-timeline"><i class="bi bi-clock-history"></i> Timeline</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-logs"><i class="bi bi-journal-text"></i> Logs</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-metrics"><i class="bi bi-graph-up"></i> Metrics</a></li>
@@ -74,15 +83,28 @@
         <div class="tab-pane fade" id="tab-actions">
             <div class="btn-group mb-3" id="action-group">
                 <button class="btn btn-success" data-action="start" {% if not inst.can_manage %}disabled{% endif %}><i class="bi bi-play-fill"></i> Start</button>
-                <button class="btn btn-danger" data-action="stop" {% if not inst.can_manage %}disabled{% endif %}><i class="bi bi-stop-fill"></i> Stop</button>
                 <button class="btn btn-outline-secondary" data-action="refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
             </div>
             <div class="action-progress" id="action-progress"></div>
+            <div class="danger-zone mt-4" id="danger-zone">
+                <h2 class="h6 text-uppercase danger-title"><i class="bi bi-exclamation-triangle"></i> Danger zone</h2>
+                <p class="small text-faint">Destructive operations are separated (§86) and require typing the server name. Production resources additionally need an approval token (§107).</p>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-danger" data-danger-action="stop" {% if not inst.can_manage %}disabled{% endif %}><i class="bi bi-stop-fill"></i> Stop</button>
+                </div>
+                <div class="small text-danger mt-2" id="danger-zone-note"></div>
+            </div>
             <div class="small text-faint mt-3 font-mono">
                 Instance ID: <code>{{ inst.instance_id }}</code><br>
                 Terraform address: <code>{{ inst.address }}</code>
             </div>
         </div>
+
+        {# --- Feature panels (Files/Processes/Services/Docker) — agent-scoped (§20-23) --- #}
+        <div class="tab-pane fade" id="tab-files"><div class="feature-placeholder"><i class="bi bi-folder2-open"></i><h3 class="h6 mt-2 mb-1">File manager (§20)</h3><p class="small text-faint mb-0">Requires the SkyDash agent on this server. Contract: <code>skydash/features/files.py</code>.</p></div></div>
+        <div class="tab-pane fade" id="tab-processes"><div class="feature-placeholder"><i class="bi bi-cpu"></i><h3 class="h6 mt-2 mb-1">Process management (§21)</h3><p class="small text-faint mb-0">Requires the SkyDash agent on this server. Contract: <code>skydash/features/processes.py</code>.</p></div></div>
+        <div class="tab-pane fade" id="tab-services"><div class="feature-placeholder"><i class="bi bi-gear"></i><h3 class="h6 mt-2 mb-1">Service management (§22)</h3><p class="small text-faint mb-0">Requires the SkyDash agent on this server. Contract: <code>skydash/features/services.py</code>.</p></div></div>
+        <div class="tab-pane fade" id="tab-docker"><div class="feature-placeholder"><i class="bi bi-box-seam"></i><h3 class="h6 mt-2 mb-1">Docker management (§23)</h3><p class="small text-faint mb-0">Requires the SkyDash agent and Docker CLI on this server. Contract: <code>skydash/features/docker.py</code>.</p></div></div>
 
         {# --- Status change timeline --- #}
         <div class="tab-pane fade" id="tab-timeline"><div id="timeline-host"></div></div>

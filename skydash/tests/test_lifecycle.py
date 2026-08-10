@@ -95,6 +95,24 @@ def test_import_engine_available():
     assert callable(import_inventory) and callable(imported_count)
 
 
+def test_status_history_recent_events():
+    import status_history as sh
+
+    data = {
+        "web": [{"ts": 100.0, "status": "running"}, {"ts": 200.0, "status": "stopped"}],
+        "db": [{"ts": 150.0, "status": "running"}],
+    }
+    orig = sh._load
+    sh._load = lambda: data
+    try:
+        events = sh.recent_events(["web", "db"], limit=10)
+        assert events[0]["slug"] == "web" and events[0]["ts"] == 200.0, events
+        assert events[-1]["slug"] == "web" and events[-1]["ts"] == 100.0, events
+        assert len(sh.recent_events(["web"], limit=1)) == 1
+    finally:
+        sh._load = orig
+
+
 if __name__ == "__main__":
     failures = 0
     for name, fn in sorted(globals().items()):

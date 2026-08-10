@@ -188,6 +188,19 @@ See `docs/security-governance-iter8.md` for the BLOCKED matrix (Vault/MFA/Postgr
 Live drift sweep + import execution need cloud creds (deploy) — logic is unit-tested here.
 Tests: `python3 skydash/tests/test_lifecycle.py` (5/5 PASS; import_engine guarded on werkzeug).
 
+## 🎨 Iteration 4 — UI Foundation (delivered)
+
+| Item | § | What shipped | Verified |
+|---|---|---|---|
+| Danger-zone separation | §86 | Actions tab split: Start/Refresh ops vs Danger zone (Stop) with type-to-confirm modal sending the §107 approval token | `node --check detail.js` OK |
+| Managed/unmanaged badge | §86 | detail.html header badge driven by `inst.can_manage` | template review |
+| Notification center | §60 | navbar bell (base.html) + `notifications.js` ← `GET /api/v1/notifications` (status events) | `recent_events()` unit test PASS |
+| Feature tabs | §20-23 | Files/Processes/Services/Docker tabs w/ agent-required placeholder panels | template review |
+| Loading skeletons | §86 | `.skeleton` shimmer in metrics charts during fetch | `node --check metrics-charts.js` OK |
+| Activity timeline | §87 | already shipped; `recent_events()` helper added + tested | unit test PASS |
+
+Tests: `python3 skydash/tests/test_lifecycle.py` now 6/6 PASS. Browser-level verification pending (no Flask).
+
 ## ⚙️ How to refresh this
 
 ```bash
