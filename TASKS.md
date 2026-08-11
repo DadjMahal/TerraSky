@@ -266,8 +266,8 @@
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
-| task_0028 | Alert thresholds + dispatch | ⬜ pending | | §46 | Iter 7 (next) | 
-| task_0029 | Global inventory view | ⬜ pending | | §57 | Iter 7 (next) |
+| task_0028 | Alert thresholds + dispatch | ✅ done | Cline | §46 | `health.py` data-driven threshold rules + `GET /api/v1/alerts`; dispatch (SMTP/webhook) BLOCKED on infra | 
+| task_0029 | Global inventory view | ✅ done | Cline | §57 | `inventory.py` indexed search (slug/name/provider/region/type/status/tags) + `GET /api/v1/inventory?q=` + CSV report (§92) |
 | task_0030 | Resource relationships graph | ⬜ pending | | §88, §89 | |
 
 ### Iteration 8 — Project/Environment, Application Model

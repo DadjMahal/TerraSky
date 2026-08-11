@@ -214,6 +214,20 @@ Tests: `python3 skydash/tests/test_lifecycle.py` now 6/6 PASS. Browser-level ver
 Tests: `python3 skydash/tests/test_deployments.py` 3/3 PASS. Real host build execution,
 webhooks, blue/green + registries remain BLOCKED (external infra — documented in the doc).
 
+## 📊 Iteration 7 — Monitoring & Financials (delivered, unit-tested)
+
+| Module | § | Verified |
+|---|---|---|
+| `inventory.py` | §57, §59 searchable inventory | search/filter/summarize tests PASS; `GET /api/v1/inventory` |
+| `health.py` | §44-46 threshold alerts | disk/status alert tests PASS; `GET /api/v1/alerts` (dispatch BLOCKED) |
+| `billing/model.py` | §51-54 CostRecord/Invoice + USD normalization + provider/project/period rollups | rollup tests PASS |
+| `billing/budgets.py` | §55 thresholds (warn 70% / critical 90% / exceeded) — advisory, no auto-shutdown | budget tests PASS |
+| `billing/adapters.py` | §56 per-provider adapters (document the exact API call, NotImplementedError — no fake data) | skeletons |
+| `reports.py` | §92-93 CSV/JSON reports | `GET /api/v1/reports/inventory.csv` + tests PASS |
+
+Tests: `python3 skydash/tests/test_monitoring.py` 4/4 PASS. Live billing import + alert
+dispatch + Prometheus/Grafana remain BLOCKED (provider keys / external infra / Iter 10).
+
 ## ⚙️ How to refresh this
 
 ```bash

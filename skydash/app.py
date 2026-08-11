@@ -12,7 +12,7 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from flask import Flask, abort, Blueprint, jsonify, redirect, render_template, render_template_string, request, url_for
+from flask import Flask, abort, Blueprint, jsonify, redirect, render_template, render_template_string, request, url_for, Response
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -385,6 +385,42 @@ def v1_approval_approve(approval_id: str):
     audit_system.add(actor=get_current_user() or "api", action="approval.approve",
                      resource=f"approvals/{approval_id}", outcome="success")
     return _envelop(result)
+
+
+@api_v1.route("/inventory")
+@login_required
+def v1_inventory():
+    """GET /api/v1/inventory?q=&provider=&status= — searchable inventory (§57, §59)."""
+    from inventory import build_index, search, summarize
+
+    idx = build_index(get_instances())
+    items = search(idx, query=request.args.get("q", ""),
+                   provider=request.args.get("provider") or None,
+                   status=request.args.get("status") or None)
+    return _envelop({"items": items, "total": len(items), "summary": summarize(items)})
+
+
+@api_v1.route("/alerts")
+@login_required
+def v1_alerts():
+    """GET /api/v1/alerts — resulting alerts from threshold rules (§44-46)."""
+    from health import evaluate_fleet
+
+    alerts = evaluate_fleet(get_instances())
+    return _envelop({"alerts": alerts, "count": len(alerts)})
+
+
+@api_v1.route("/reports/inventory.csv")
+@login_required
+def v1_inventory_report():
+    """GET /api/v1/reports/inventory.csv — CSV report of the inventory (§92)."""
+    from inventory import build_index
+    from reports import inventory_csv
+
+    idx = [{k: v for k, v in r.items() if not k.startswith("_")} for r in build_index(get_instances())]
+    body = inventory_csv(idx)
+    return Response(body, mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=skydash-inventory.csv"})
 
 
 @api_v1.route("/topology")
