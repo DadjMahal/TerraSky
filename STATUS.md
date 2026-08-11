@@ -228,6 +228,19 @@ webhooks, blue/green + registries remain BLOCKED (external infra — documented 
 Tests: `python3 skydash/tests/test_monitoring.py` 4/4 PASS. Live billing import + alert
 dispatch + Prometheus/Grafana remain BLOCKED (provider keys / external infra / Iter 10).
 
+## 🤖 Iteration 9 — AI Agent Integration (delivered, unit-tested)
+
+| Module | § | Verified |
+|---|---|---|
+| `plugins/` (package) | §72-73 plugin registry + least-privilege permission enforcement | built-in status-reader; enforce(status.read)=T, enforce(server.stop)=F; tests PASS |
+| `workers.py` | §74-75 isolated command exec: timeout, output cap, allowlist, approval gate | uptime OK / curl NOT_ALLOWED / NEEDS_APPROVAL tests PASS |
+| `agent_registry.py` | §96-98 short-lived single-use scoped enrollment tokens | issue→verify ok, replay rejected test PASS |
+| `agent_protocol.py` | §132-135 TaskSubmission validation + safety rules (intent required for destructive; approval flag) | rules + validation tests PASS |
+| API | `/api/v1/plugins`, `/agent-rules`, `/agent/enroll` (admin), `/agent/execute` (operator+, sandboxed, audited) | py_compile OK |
+
+Tests: `python3 skydash/tests/test_agents.py` 4/4 PASS. Agent→platform transport,
+real container sandbox isolation, and live agents remain BLOCKED (external/host infra).
+
 ## ⚙️ How to refresh this
 
 ```bash

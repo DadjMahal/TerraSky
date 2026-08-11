@@ -423,6 +423,72 @@ def v1_inventory_report():
                     headers={"Content-Disposition": "attachment; filename=skydash-inventory.csv"})
 
 
+@api_v1.route("/plugins")
+@login_required
+def v1_plugins():
+    """GET /api/v1/plugins — registered plugins + declared permissions (§72-73)."""
+    from plugins import list_plugins
+
+    return _envelop({"plugins": list_plugins()})
+
+
+@api_v1.route("/agent-rules")
+@login_required
+def v1_agent_rules():
+    """GET /api/v1/agent-rules — the safety protocol agents must follow (§133-135)."""
+    from agent_protocol import rules_payload
+
+    return _envelop({"rules": rules_payload()})
+
+
+@api_v1.route("/agent/enroll", methods=["POST"])
+@require_role(rbac.ADMIN)
+@login_required
+def v1_agent_enroll():
+    """POST /api/v1/agent/enroll — issue a single-use scoped agent token (§96)."""
+    from agent_registry import issue
+
+    data = request.get_json(silent=True) or {}
+    sess = issue(
+        agent_id=(data.get("agent_id") or "agent").strip(),
+        project=(data.get("project") or "*").strip(),
+        permissions=tuple(data.get("permissions") or ("read",)),
+        ttl_seconds=int(data.get("ttl_seconds") or 900),
+    )
+    audit_system.add(actor=get_current_user() or "api", action="agent.enroll",
+                     resource="agents", detail={"agent_id": sess.agent_id, "project": sess.project},
+                     outcome="success")
+    return _envelop({"token": sess.token, "expires_at": sess.expires_at,
+                     "project": sess.project, "permissions": list(sess.permissions)}), 201
+
+
+@api_v1.route("/agent/execute", methods=["POST"])
+@auth_limiter.limit("30 per minute")
+@require_role(rbac.ADMIN, rbac.OPERATOR)
+@login_required
+def v1_agent_execute():
+    """POST /api/v1/agent/execute — validate a task submission (§134) then run
+    only allowlisted, sandboxed commands (§75). Destructive tasks are denied
+    unless approved. Intended for the enrollment-token flow (§96-98)."""
+    from agent_protocol import validate
+    from workers import run_isolated
+
+    data = request.get_json(silent=True) or {}
+    verdict = validate(data)
+    if not verdict["ok"]:
+        status = 403 if verdict["requires_approval"] else 400
+        return jsonify({"status": "error", "error": "; ".join(verdict["errors"]),
+                        "code": "AGENT_DENIED", "requires_approval": verdict["requires_approval"]}), status
+    command = ((data.get("params") or {}).get("command") or "").strip()
+    if not command:
+        return jsonify({"status": "error", "error": "params.command required", "code": "INVALID_INPUT"}), 400
+    res = run_isolated(command, require_approval=verdict.get("requires_approval", False))
+    audit_system.add(actor=get_current_user() or "api", action=f"agent.{data['task_type']}",
+                     resource=data["resource_id"], detail={"code": res.get("code")},
+                     outcome="success" if res.get("ok") else "error")
+    return _envelop(res)
+
+
 @api_v1.route("/topology")
 @login_required
 def v1_topology():
