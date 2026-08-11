@@ -290,6 +290,6 @@
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
 | task_0036 | External services budget approval | 🔴 blocked | user | § | Needs user decision |
-| task_0037 | Deploy Vault + Redis + PostgreSQL + Prometheus + Grafana | ⬜ pending | | §119, §82 | |
+| task_0037 | Deploy Vault + Redis + PostgreSQL + Prometheus + Grafana | 🔴 blocked | user | §119, §82 | Needs user budget decision (see docs/production-hardening.md) |
 
 
