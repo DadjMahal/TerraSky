@@ -18,7 +18,7 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-from models import STATUS_UNKNOWN
+from models import STATUS_ERROR, STATUS_STARTING, STATUS_STOPPING, STATUS_UNKNOWN
 from providers.registry import get_provider
 from state_reader import get_instance_by_slug, get_instances
 from auth import auth_bp, init_auth, login_required, get_current_user
@@ -217,14 +217,14 @@ def v1_instance_action(slug, action):
     # §107 environment protection — production resources need approval to stop.
     blocked = _prod_shield_guard(inst, action)
     if blocked is not None:
-        return blocked
+                return blocked
     provider = get_provider(inst.provider)
     if not provider or not provider.available():
         return jsonify({"status": "error", "error": "Provider not available", "code": "PROVIDER_UNAVAILABLE"}), 503
     ok, msg = provider.start_instance(inst) if action == "start" else provider.stop_instance(inst)
     _status_cache.pop(slug, None)
-    transitional = "starting" if action == "start" else "stopping"
-    return _envelop({"ok": ok, "message": msg, "status": transitional if ok else "error"})
+    transitional = STATUS_STARTING if action == "start" else STATUS_STOPPING
+    return _envelop({"ok": ok, "message": msg, "status": transitional if ok else STATUS_ERROR})
 
 @api_v1.route("/instances/<slug>/metrics")
 @login_required
@@ -629,7 +629,7 @@ def _live_status(instance) -> dict:
 @app.route("/")
 @login_required
 def index():
-    # Statuses are intentionally left as "loading" server-side; the browser
+    # Statuses are intentionally left as STATUS_LOADING server-side; the browser
     # fetches them live via /api/statuses so the page never blocks on cloud APIs.
     # We do NOT call provider.get_instance_details() here to keep page load instant.
     instances = [_apply_overrides(i.to_dict()) for i in get_instances()]
@@ -664,9 +664,9 @@ def api_statuses():
                     results[slug] = future.result()
                 except Exception as e:
                     logger.error(f"Failed to get status for {slug}: {e}")
-                    results[slug] = {"slug": slug, "status": "error", "can_manage": False, "error": str(e), "public_ip": "", "private_ip": ""}
+                    results[slug] = {"slug": slug, "status": STATUS_ERROR, "can_manage": False, "error": str(e), "public_ip": "", "private_ip": ""}
     # Return in the same order as the instance list
-    return jsonify([results.get(inst.slug, {"slug": inst.slug, "status": "unknown", "can_manage": False, "error": "", "public_ip": "", "private_ip": ""}) for inst in instances])
+    return jsonify([results.get(inst.slug, {"slug": inst.slug, "status": STATUS_UNKNOWN, "can_manage": False, "error": "", "public_ip": "", "private_ip": ""}) for inst in instances])
 
 
 def _parse_size(value: str) -> float:
@@ -943,8 +943,8 @@ def instance_action(slug: str, action: str):
     ok, msg = provider.start_instance(inst) if action == "start" else provider.stop_instance(inst)
     _status_cache.pop(slug, None)  # invalidate so the next poll reflects the change
     # Optimistic transitional status for immediate UI feedback.
-    transitional = "starting" if action == "start" else "stopping"
-    return jsonify({"ok": ok, "message": msg, "status": transitional if ok else "error"})
+    transitional = STATUS_STARTING if action == "start" else STATUS_STOPPING
+    return jsonify({"ok": ok, "message": msg, "status": transitional if ok else STATUS_ERROR})
 
 
 

@@ -177,7 +177,7 @@ class AzureProvider(CloudProvider):
         try:
             rg, vm = self._rg_vm(instance)
             # begin_start submits the operation; we do not block on the LRO so the
-            # UI can reflect a transitional "starting" state immediately.
+            # UI can reflect a transitional STATUS_STARTING state immediately.
             self._client().virtual_machines.begin_start(rg, vm)
             return True, f"Start request sent to {instance.name}"
         except Exception as e:

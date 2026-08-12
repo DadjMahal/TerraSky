@@ -54,13 +54,12 @@ class AwsProvider(CloudProvider):
         """
         try:
             resp = self._client(instance).describe_instances(InstanceIds=[instance.instance_id])
-            state = "unknown"
+            state = STATUS_UNKNOWN
             live_public_ip = ""
             live_private_ip = ""
             for r in resp.get("Reservations", []):
                 for i in r.get("Instances", []):
-                    state = i.get("State", {}).get("Name", "unknown")
-                    # Always read live IPs directly from the instance response
+                    state = i.get("State", {}).get("Name", STATUS_UNKNOWN)
                     live_private_ip = i.get("PrivateIpAddress") or live_private_ip
                     live_public_ip = i.get("PublicIpAddress") or live_public_ip
                     # Fallback: check network interface associations for public IP

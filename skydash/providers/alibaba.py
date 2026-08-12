@@ -72,7 +72,7 @@ class AlibabaProvider(CloudProvider):
                 return STATUS_UNKNOWN, "", instance.public_ip, instance.private_ip
             
             ali_inst = insts[0]
-            state = ali_inst.status if hasattr(ali_inst, 'status') else "unknown"
+            state = ali_inst.status if hasattr(ali_inst, 'status') else STATUS_UNKNOWN
             
             # Get IPs from the response — ALWAYS prefer live data over TF state
             public_ip = ""
