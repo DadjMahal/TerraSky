@@ -140,13 +140,25 @@ Sentinel, CI/CD integration) is NOT in scope — it's a 3-iteration expansion
 detailed in `docs/terraform-integration.md`. **Awaiting user decision** on whether
 to expand Iter 5 or defer to later iterations.
 
-## 🔜 Next steps (highest impact first)
+## 🚀 Status (as of live deploy, 2026-08-12)
 
-**Iteration 1** was delivered alongside the Iter 0 audit as a security-hardening
-baseline. All touched modules pass `python3 -m py_compile` (syntax verified);
-**runtime/deploy verification is still pending** (Flask is not installed in this
-environment and the production droplet has not been redeployed yet). See
-`docs/architecture-gap-analysis.md` §3 for the root-cause analysis.
+**Iterations 1-9 are deployed and running live** on the production droplet
+(`167.172.188.248`) — see `## 🚀 Iteration 1-10 Live Deployment` below for
+verification output. The earlier per-iteration "runtime/deploy verification is
+still pending" notes are therefore **resolved**: the service is active, `/login`
+returns 200, and every `/api/v1/*` route returns 200 (authed).
+
+**Iteration 10** infrastructure is **provisioned and live** (no longer blocked):
+PostgreSQL 16, Redis 7, Prometheus 2.45.3, and Grafana are all `active` on the
+droplet; `/api/v1/metrics` is scraped by Prometheus (target `up`,
+`skydash_up = 1`). Remaining hardening items are staged as follow-ups —
+Vault/KMS external secrets backend, OPA/Conftest policy engine, GDPR
+right-to-delete, and TLS termination — see `docs/production-hardening.md`
+(BLOCKED matrix) and `docs/db-setup.md` / `docs/observability.md`.
+
+`docs/architecture-gap-analysis.md` §3 remains the root-cause note for why unit
+tests can't exercise Flask routes (no Flask in this env); live deploy is the real
+verification path and is now done.
 
 **Iteration 1 — in progress (code implemented in this pass):**
 1. ✅ CSRF protection (Flask-WTF `CSRFProtect`) on all POST routes — hidden form
@@ -173,8 +185,11 @@ Code + unit tests shipped (real runtime verification — no Flask needed):
 
 Wiring: `@audited` + `@rbac.require_role(admin)` on mutating admin/instance routes; prod-shield on start/stop
 (§107); CLI `--approve`; OpenAPI `# /security/checklist`. Tests: `python3 skydash/tests/test_governance.py`.
-Flask-runtime + deploy verification still PENDING (no Flask here / no droplet redeploy).
-See `docs/security-governance-iter8.md` for the BLOCKED matrix (Vault/MFA/PostgreSQL/OPA = Iter 10 or user decision).
+Flask-runtime + deploy verification resolved — service is **live** on the
+droplet (see `## 🚀 Iteration 1-10 Live Deployment` below). All governance
+endpoints return 200 with the auth+RBAC+CSRF hardening active.
+See `docs/security-governance-iter8.md` for the Iter 8 design matrix; Iter 10
+external-service BLOCKED matrix is in `docs/production-hardening.md`.
 
 ## 🔁 Iteration 3 — Infrastructure Lifecycle (delivered, unit-tested)
 
@@ -226,7 +241,9 @@ webhooks, blue/green + registries remain BLOCKED (external infra — documented 
 | `reports.py` | §92-93 CSV/JSON reports | `GET /api/v1/reports/inventory.csv` + tests PASS |
 
 Tests: `python3 skydash/tests/test_monitoring.py` 4/4 PASS. Live billing import + alert
-dispatch + Prometheus/Grafana remain BLOCKED (provider keys / external infra / Iter 10).
+dispatch remain BLOCKED (provider payment API keys not configured). **Prometheus +
+Grafana are now Live** on the droplet (skydash job `up`, `skydash_up=1`; see
+`docs/observability.md` and the Iter 10 infra block below).
 
 ## 🤖 Iteration 9 — AI Agent Integration (delivered, unit-tested)
 
@@ -287,6 +304,39 @@ GET /static/js/dashboard.js            : 200
 `scripts/status.sh` output: service active, ports 80/8080, /login 200,
 / 302, title SkyDash. All `/api/v1/*` routes are `@login_required`, so they are
 verified with an authenticated session (login requires the CSRF token per §77).
+
+## ⚙️ Iteration 10 — Production Infrastructure (live on the droplet)
+
+Provisioned on `167.172.188.248` (Ubuntu 24.04), all loopback-only:
+
+| Service | Version | Unit | Port | Evidence |
+|---|---|---|---|---|
+| PostgreSQL | 16.14 | `postgresql` | 127.0.0.1:5432 | role+db `skydash` exist; `db.healthcheck()` → PG 16.14 |
+| Redis | 7.0.15 | `redis-server` | 127.0.0.1:6379 | `redis-cli ping` → PONG |
+| Prometheus | 2.45.3 | `prometheus` | 9090 | `skydash` job target `up`, `skydash_up = 1` |
+| Grafana | (apt) | `grafana-server` | 3000 | `/api/health` 200; datasource + dashboard provisioned |
+
+`skydash/db.py` (+ `docs/db-setup.md`) and `skydash/prometheus_metrics.py` (+
+`docs/observability.md`) are in the repo and `app.py` exposes the public
+`/api/v1/metrics` endpoint feeding Prometheus. The Flask app already loads
+`SKYDASH_DATABASE_URL` from `/home/volodro/terraform/.env`; wiring `db.get_connection()`
+into the live app paths is a staged follow-up.
+
+### ✅ Live verification (real output)
+```text
+systemctl is-active skydash.service : active      (Flask 0.0.0.0:8080)
+systemctl is-active postgresql     : active
+systemctl is-active redis-server   : active
+systemctl is-active prometheus     : active
+systemctl is-active grafana-server : active
+GET /api/v1/metrics (public)        : 200  text/plain; version=0.0.4
+  skydash_up 1 / skydash_instances{provider="aws"} 1 / ...digitalocean 3 / ...oracle 1
+Prometheus targets                 : prometheus up, skydash up
+Grafana /api/health                : 200
+Grafana datasources                : Prometheus (uid=skydash-prom, default)
+Grafana dashboards                 : SkyDash Overview (uid=skydash-overview)
+Public ports: :80 :8080 only   (DB/Redis/Prometheus/Grafana bound to loopback)
+```
 
 ## ⚙️ How to refresh this
 

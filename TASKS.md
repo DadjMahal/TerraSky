@@ -289,7 +289,7 @@
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
-| task_0036 | External services budget approval | 🔴 blocked | user | § | Needs user decision |
-| task_0037 | Deploy Vault + Redis + PostgreSQL + Prometheus + Grafana | 🔴 blocked | user | §119, §82 | Needs user budget decision (see docs/production-hardening.md) |
+| task_0036 | External services budget approval | ✅ complete | user | § | Owner approved (2026-08-12); core infra provisioned & live on the droplet |
+| task_0037 | Deploy PostgreSQL + Redis + Prometheus + Grafana (+ Vault) | 🔵 partial | Cline | §119, §82 | **Live:** PostgreSQL 16 (skydash db+role), Redis 7 (PONG), Prometheus 2.45.3 (skydash job UP), Grafana (datasource+dashboard provisioned). See docs/db-setup.md + docs/observability.md. **Vault/KMS** external secrets backend remains staged (crypto uses env-passphrase key) |
 
 
