@@ -73,19 +73,22 @@ The project has transitioned from the old 100-task board (`TASKS.md` Categories
 | Iter | Focus | Status | Key Doc |
 |------|-------|--------|---------|
 | **0** | Architecture audit + gap analysis | ✅ Complete | `docs/architecture-gap-analysis.md` |
-| 1 | CSRF, rate limiting, API v1, OpenAPI, error codes | ⬜ Next | `docs/iteration-plan.md` |
-| 2 | Provider capabilities, drift detection UI | ⬜ Pending | — |
-| 3 | Secrets migration, RBAC, audit logging | ⬜ Pending | — |
-| 4 | UI safety, activity timeline, notifications | ⬜ Pending | — |
-| 5 | Terraform integration (state, drift, plan/apply UX) | ⬜ Pending | `docs/terraform-integration.md` |
-| 6 | Structured logging, Prometheus + Grafana | ⬜ Pending | — |
-| 7 | Alerts, inventory, relationships graph | ⬜ Pending | — |
-| 8 | Project/Environment entities, Application model | ⬜ Pending | `docs/domain-model.md` |
-| 9 | OPA policy engine, multi-tenancy, GitOps | ⬜ Pending | — |
-| 10 | Production hardening (⛔ REQUIRES USER DECISION) | ⬜ Pending | — |
+| 1 | CSRF, rate limiting, API v1, OpenAPI, error codes | ✅ Complete | `docs/iteration-plan.md` |
+| 2 | Provider capabilities, status model, drift detection | 🔄 Active | `docs/provider-framework.md` |
+| 3 | Secrets migration, RBAC, audit logging | ⏸️ Backlog | — |
+| 4 | UI safety, activity timeline, notifications | ✅ Complete | — |
+| 5 | Terraform integration (state, drift, plan/apply UX) | 🔄 Active | `docs/terraform-integration.md` |
+| 6 | Structured logging, Prometheus + Grafana | ⏸️ Backlog | — |
+| 7 | Alerts, inventory, relationships graph | ✅ Complete | — |
+| 8 | Project/Environment entities, Application model | 🔄 Active | `docs/domain-model.md` |
+| 9 | OPA policy engine, multi-tenancy, GitOps | ⏸️ Backlog | — |
+| 10 | Production hardening (⛔ REQUIRES USER DECISION) | ⏸️ Backlog | — |
 
-> **Iter 10 requires user decision** — needs budget approval for external
-> services (Vault, Redis, PostgreSQL, Prometheus, Grafana).
+> **Backlog rationale:** Iter 3 (Vault migration) awaits Iter 10 external
+> secrets backend; Iter 6 (structured logging) overlaps with Iter 10's
+> observability infra (Prometheus/Grafana already live); Iter 9 (OPA) needs the
+> external `opa`/`conftest` binary; Iter 10 (hardening) already has infra live
+> but Vault/KMS remains staged.
 > **Total Terraform integration** (all commands, remote backends, OPA/Conftest,
 > Sentinel) is NOT covered by the current plan — it's a 3-iteration expansion
 > detailed in `docs/terraform-integration.md`.

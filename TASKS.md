@@ -207,7 +207,7 @@
 | task_0005 | Infrastructure diagram + iteration plan | ✅ done | lead | 2 docs created |
 | task_0006 | Update START_HERE.md + STATUS.md + TASKS.md | ✅ done | lead | Knowledge base synced, committed |
 
-### Iteration 1 — CSRF, Rate Limiting, API v1, OpenAPI, Error Codes
+### Iteration 1 — CSRF, Rate Limiting, API v1, OpenAPI, Error Codes ✅ COMPLETE
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
@@ -216,15 +216,15 @@
 | task_0009 | Add `/api/v1/` versioning prefix | ✅ done | Cline | §62 | `api_v1` Blueprint + `X-API-Version: deprecated` header on legacy `/api/` (app.py) |
 | task_0010 | Generate OpenAPI 3.0 spec from routes | ✅ done | Cline | §125 | `skydash/openapi.py` (build_spec, valid JSON) + `/api/v1/openapi.json` + `/api/v1/docs` Swagger UI in app.py; py_compile + route-coverage check OK. CLI (§63) added in `skydash/cli.py` (list/status/start/stop) |
 
-### Iteration 2 — Provider Capabilities, Drift Detection
+### Iteration 2 — Provider Capabilities, Drift Detection 🔄 ACTIVE
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
 | task_0011 | Extend `CloudProvider` with `get_capabilities()` | ✅ done | Cline | §2.2, §10 | `providers/base.py` capabilities + per-provider declarations + `GET /api/v1/providers` (registry import verified) |
 | task_0012 | Add drift detection (tfstate vs live comparison) | ✅ done | Cline | §15 | `drift.py` compare/detect/summarize + `GET /api/v1/drift`; unit-tested (unavailable providers → honest "unverifiable"); live sweep needs cloud creds (deploy) |
-| task_0013 | Standardize status model (use `models.py` constants everywhere) | ⬜ pending | | §43 | |
+| task_0013 | Standardize status model (use `models.py` constants everywhere, §43) | 🔵 in_progress | iter2-team | §43 | Replace hardcoded `"running"`/`"stopped"`/`"starting"`/`"stopping"`/`"error"`/`"unknown"`/`"loading"` literals in `app.py` + providers with `STATUS_*` constants from `models.py` |
 
-### Iteration 3 — Secrets Migration, RBAC, Audit Logging
+### Iteration 3 — Secrets Migration, RBAC, Audit Logging ⏸️ BACKLOG
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
@@ -232,7 +232,7 @@
 | task_0015 | Implement RBAC roles (admin/user/read-only) | ✅ done | Cline | §33, §34 | `rbac.py` (admin/operator/readonly hierarchy, require_role/require_permission → 403 FORBIDDEN) wired onto all admin routes; escalation bug found+fixed in review; unit-tested |
 | task_0016 | Add audit logging (structured, append-only) | ✅ done | Cline | §37, §81 | `audit.py` append-only JSONL + SHA-256 hash chain, `@audited` on mutating admin + instance-action routes, query + verify_chain; tamper-detection unit-tested |
 
-### Iteration 4 — UI Safety, Activity Timeline, Notifications
+### Iteration 4 — UI Safety, Activity Timeline, Notifications ✅ COMPLETE
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
@@ -240,21 +240,21 @@
 | task_0018 | Activity timeline (§87) | ✅ done | Cline | §87 | status-timeline tab already shipped (`status_history.py` + `status-timeline.js`); retro-added `recent_events()` assistant, unit-tested |
 | task_0019 | Notification center / toast system | ✅ done | Cline | §60 | navbar bell + `static/js/notifications.js` consuming `GET /api/v1/notifications` (status events, newest-first, unit-tested) |
 
-### Iteration 5 — Terraform Integration
+### Iteration 5 — Terraform Integration 🔄 ACTIVE
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
-| task_0020 | tfstate reading + basic drift (§11) | ⬜ pending | | §11, §15 | |
-| task_0021 | Workspace model (design) (§12) | ⬜ pending | | §12 | |
-| task_0022 | State security (design) (§13) | ⬜ pending | | §13 | |
-| task_0023 | Provider sync cron (§42) | ⬜ pending | | §42 | |
-| task_0024 | Plan/apply UX read-only (§102-104) | ⬜ pending | | §102-104 | |
+| task_0020 | tfstate reading + basic drift (§11) | 🔵 in_progress | iter5-team | §11, §15 | Integrate `state_reader.py` + `drift.py` into app; expose `/api/v1/tfstate` status |
+| task_0021 | Workspace model (design) (§12) | 🔵 in_progress | iter5-team | §12 | Document + implement workspace/environment mapping design |
+| task_0022 | State security (design) (§13) | 🔵 in_progress | iter5-team | §13 | Document state file security model (encryption at rest, versioning, access policies) |
+| task_0023 | Provider sync cron (§42) | 🔵 in_progress | iter5-team | §42 | Implement periodic provider sync using `scheduler.py` (SKYDASH_SCHEDULER) |
+| task_0024 | Plan/apply UX read-only (§102-104) | 🔵 in_progress | iter5-team | §102-104 | Read-only tfstate output viewer + `terraform show -json` parsing endpoint |
 
 > **Terraform scope question:** "Total Terraform integration" (all commands,
 > remote backends, modules, OPA/Conftest, Sentinel) is NOT in Iter 5.
 > See `docs/terraform-integration.md`. **Awaiting user decision.**
 
-### Iteration 6 — Logging, Prometheus, Grafana
+### Iteration 6 — Logging, Prometheus, Grafana ⏸️ BACKLOG
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
@@ -262,22 +262,22 @@
 | task_0026 | Prometheus metrics endpoint | ⬜ pending | | §45, §82 | |
 | task_0027 | Grafana dashboard config | ⬜ pending | | §82 | |
 
-### Iteration 7 — Alerts, Inventory, Relationships
+### Iteration 7 — Alerts, Inventory, Relationships ✅ COMPLETE
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
 | task_0028 | Alert thresholds + dispatch | ✅ done | Cline | §46 | `health.py` data-driven threshold rules + `GET /api/v1/alerts`; dispatch (SMTP/webhook) BLOCKED on infra | 
 | task_0029 | Global inventory view | ✅ done | Cline | §57 | `inventory.py` indexed search (slug/name/provider/region/type/status/tags) + `GET /api/v1/inventory?q=` + CSV report (§92) |
-| task_0030 | Resource relationships graph | ⬜ pending | | §88, §89 | |
+| task_0030 | Resource relationships graph | ✅ done | iter7-team | §88, §89 | `dependencies.py` (`build_graph`/`as_topology`) + `GET /api/v1/topology` (app.py:510) + `topology.js` UI + `test_lifecycle.py::test_dependency_graph` PASS |
 
-### Iteration 8 — Project/Environment, Application Model
+### Iteration 8 — Project/Environment, Application Model 🔄 ACTIVE
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
-| task_0031 | Project + Environment entities | ⬜ pending | | §6.1, §105 | |
+| task_0031 | Project + Environment entities (§6.1, §105) | 🔵 in_progress | iter8-team | §6.1, §105 | Create `projects.py` with Project + Environment dataclasses + registry; add `/api/v1/projects` + `/api/v1/environments` endpoints |
 | task_0032 | Application model + deployment engine | ✅ done | Cline | §25-27 | `deployments/applications.py` + `/api/v1/applications/*/deployments`; rollback + prod approval gate wired; unit-tested (real host builds BLOCKED on deploy infra) |
 
-### Iteration 9 — OPA Policy Engine, Multi-Tenancy, GitOps
+### Iteration 9 — OPA Policy Engine, Multi-Tenancy, GitOps ⏸️ BACKLOG
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
@@ -285,11 +285,26 @@
 | task_0034 | Multi-tenancy (Org/Project isolation) | ⬜ pending | | §35-36 | |
 | task_0035 | GitOps workflow | ⬜ pending | | §65, §66 | |
 
-### Iteration 10 — Production Hardening ⛔ REQUIRES USER DECISION
+### Iteration 10 — Production Hardening ⛔ BACKLOG (REQUIRES USER DECISION)
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
 | task_0036 | External services budget approval | ✅ complete | user | § | Owner approved (2026-08-12); core infra provisioned & live on the droplet |
 | task_0037 | Deploy PostgreSQL + Redis + Prometheus + Grafana (+ Vault) | 🔵 partial | Cline | §119, §82 | **Live:** PostgreSQL 16 (skydash db+role), Redis 7 (PONG), Prometheus 2.45.3 (skydash job UP), Grafana (datasource+dashboard provisioned). See docs/db-setup.md + docs/observability.md. **Vault/KMS** external secrets backend remains staged (crypto uses env-passphrase key) |
+
+---
+
+## ⏸️ Backlog — Iterations 3, 6, 9, 10
+
+> These iterations were moved to BACKLOG because they depend on external
+> services or infrastructure that is not yet available. They can be resumed
+> once the blocking dependency is resolved (see `START_HERE.md` § Backlog).
+
+| Iteration | Reason | Blocks removed when |
+|---|---|---|
+| **Iter 3** | Secrets migration to Vault needs the external Vault/KMS backend (Iter 10 infra). RBAC + audit logging are already ✅. | Vault/KMS backend staged |
+| **Iter 6** | Structured logging is code-only, but Prometheus/Grafana observability infra is already live via Iter 10 (§82). Awaiting the structured-logging code task. | — (can resume at any time) |
+| **Iter 9** | OPA/Conftest engine needs the external `opa`/`conftest` binary installed. | External binary available |
+| **Iter 10** | Already partially live (Postgres, Redis, Prometheus, Grafana). Vault/KMS external secrets backend remains staged. | — (in progress on the droplet)
 
 
