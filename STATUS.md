@@ -241,6 +241,53 @@ dispatch + Prometheus/Grafana remain BLOCKED (provider keys / external infra / I
 Tests: `python3 skydash/tests/test_agents.py` 4/4 PASS. Agent→platform transport,
 real container sandbox isolation, and live agents remain BLOCKED (external/host infra).
 
+## 🚀 Iteration 1-10 Live Deployment (verified 2026-08-12, droplet 167.172.188.248)
+
+Deployed the full repo `skydash/` (Iterations 1-10) to the live droplet:
+
+- **Sync:** `rsync -a --delete /root/TerraSky/skydash/ → /home/volodro/skydash/`
+  EXCLUDING `venv/`, `__pycache__/`, `*.pyc`, `secrets_store.json`,
+  `approval_log.jsonl`, `audit_logs/`, `status_history.json`, and
+  `skydash_config.json` (preserved live config & runtime state).
+- **Deps:** `venv/bin/pip install -r requirements.txt` → added **Flask-WTF 1.3.0**,
+  **Flask-Limiter 4.1.1** (blinker 1.9.0, cryptography 48.0.1 already present). Verified all four.
+- **Secrets:** `SKYDASH_SECRETS_KEY` generated (`openssl rand -base64 48`) and
+  appended to `/home/volodro/terraform/.env` (value not printed; file still
+  `volodro:volodro` 600). Loaded via the systemd unit's `EnvironmentFile`.
+- **Ownership:** `chown -R volodro:volodro /home/volodro/skydash`; restarted unit.
+
+### ⚠️ Three latent module-level bugs found & fixed in `app.py`
+These were unit-test blind spots (tests ran `py_compile`, never imported/started
+the app). Fixed in `skydash/app.py` and now committed:
+
+1. **CSRF:** code used `@csrf.error_handler`, removed in **all** Flask-WTF 1.x
+   (1.2.2 and 1.3.0 both lack it). Fix: handle via `@app.errorhandler(CSRFError)`
+   (modern API, keeps latest secure Flask-WTF 1.3.0). Imported `CSRFError`.
+2. **`require_role`** used bare in many decorators but never imported → added
+   `from rbac import require_role`.
+3. **`os`** (line ~570 scheduler flag) and **`flash`** (admin routes) used but
+   never imported → added `import os` and `flash` to the flask import.
+
+Caught by iterating `systemctl` + journal, then confirmed clean with `pyflakes`
+(`NO UNDEFINED NAMES in app.py`).
+
+### ✅ Verification (real output, all green)
+```text
+systemctl is-active skydash.service   : active
+Flask running on 0.0.0.0:8080
+GET /login                             : 200, <title>Sign in | SkyDash</title>
+GET /                                  : 302 (redirect to /login)
+POST /login (admin/admin, w/ CSRF)     : 302 → /  (session cookie set)
+GET /api/v1/statuses   (authed)        : 200 JSON — 5 instances
+GET /api/v1/providers  (authed)        : 200 JSON — 6 providers (aws/oracle/digitalocean available)
+GET /api/v1/inventory?q= (authed)      : 200 JSON
+GET /static/css/tokens.css             : 200
+GET /static/js/dashboard.js            : 200
+```
+`scripts/status.sh` output: service active, ports 80/8080, /login 200,
+/ 302, title SkyDash. All `/api/v1/*` routes are `@login_required`, so they are
+verified with an authenticated session (login requires the CSRF token per §77).
+
 ## ⚙️ How to refresh this
 
 ```bash

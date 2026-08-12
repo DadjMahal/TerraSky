@@ -9,11 +9,12 @@ provider-independent (see SPEC.md "Architecture Goals").
 from __future__ import annotations
 
 import logging
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from flask import Flask, abort, Blueprint, jsonify, redirect, render_template, render_template_string, request, url_for, Response
-from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask import Flask, abort, Blueprint, flash, jsonify, redirect, render_template, render_template_string, request, url_for, Response
+from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
@@ -28,6 +29,7 @@ from auth import limiter as auth_limiter
 
 # --- Security & Governance (Iteration 8; §31, §33-37, §67-68, §76-80, §107) ---
 import rbac
+from rbac import require_role
 import audit as audit_system
 import policy as policy_engine
 import security_checklist
@@ -59,7 +61,10 @@ csrf = CSRFProtect(app)
 api_v1 = Blueprint("api_v1", __name__, url_prefix="/api/v1")
 
 # --- CSRF error handler ---
-@csrf.error_handler
+# Flask-WTF 1.x removed the `@csrf.error_handler` decorator; modern Flask-WTF
+# raises CSRFError instead, handled here via app.errorhandler. (Works on both
+# the 1.2.x and 1.3.x lines.)
+@app.errorhandler(CSRFError)
 def handle_csrf_error(reason):
     if request.is_json or request.path.startswith("/api/"):
         return jsonify({"status": "error", "error": "CSRF token missing or invalid", "code": "CSRF_FAILURE"}), 400
