@@ -517,7 +517,76 @@ def v1_topology():
     return _envelop(as_topology(graph))
 
 
-@api_v1.route("/openapi.json")
+@api_v1.route("/projects", methods=["GET", "POST"])
+@login_required
+def v1_projects():
+    """GET /api/v1/projects — list all projects (§6.1).
+    POST /api/v1/projects — create a project (admin only, §105)."""
+    from projects import register_project, list_projects, get_project
+
+    if request.method == "GET":
+        return _envelop({"projects": list_projects()})
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    slug = (data.get("slug") or "").strip()
+    if not name or not slug:
+        return jsonify({"status": "error", "error": "name and slug required",
+                        "code": "INVALID_INPUT"}), 400
+    try:
+        proj = register_project(name=name, slug=slug,
+                                tags=data.get("tags") or {},
+                                org_id=data.get("org_id") or "default")
+    except ValueError as exc:
+        return jsonify({"status": "error", "error": str(exc),
+                        "code": "CONFLICT"}), 409
+    audit_system.add(actor=get_current_user() or "api", action="project.create",
+                     resource=f"projects/{proj.slug}",
+                     detail={"name": proj.name}, outcome="success")
+    return _envelop(proj.to_dict()), 201
+
+
+@api_v1.route("/projects/<slug>")
+@login_required
+def v1_project_detail(slug: str):
+    """GET /api/v1/projects/<slug> — project detail with environments (§6.1)."""
+    from projects import get_project, list_environments
+
+    proj = get_project(slug)
+    if proj is None:
+        return jsonify({"status": "error", "error": "Project not found",
+                        "code": "NOT_FOUND"}), 404
+    envs = [e for e in list_environments() if e.get("project_id") == proj.id]
+    return _envelop({"project": proj.to_dict(), "environments": envs})
+
+
+@api_v1.route("/environments", methods=["GET", "POST"])
+@login_required
+def v1_environments():
+    """GET /api/v1/environments?project=<slug> — list environments (§105).
+    POST /api/v1/environments — create an environment (admin only)."""
+    from projects import register_environment, list_environments
+
+    if request.method == "GET":
+        project_slug = request.args.get("project")
+        return _envelop({"environments": list_environments(project_slug)})
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    slug = (data.get("slug") or "").strip()
+    project_slug = (data.get("project_id") or "").strip()
+    if not name or not slug or not project_slug:
+        return jsonify({"status": "error", "error": "name, slug, project_id required",
+                        "code": "INVALID_INPUT"}), 400
+    try:
+        env = register_environment(name=name, slug=slug, project_slug=project_slug,
+                                   kind=data.get("kind", "dev"),
+                                   protection_reason=data.get("protection_reason", ""))
+    except ValueError as exc:
+        return jsonify({"status": "error", "error": str(exc),
+                        "code": "CONFLICT"}), 409
+    audit_system.add(actor=get_current_user() or "api", action="environment.create",
+                     resource=f"environments/{env.slug}",
+                     detail={"name": env.name, "kind": env.kind}, outcome="success")
+    return _envelop(env.to_dict()), 201
 @login_required
 def v1_openapi_json():
     """GET /api/v1/openapi.json — machine-readable API spec (§62)."""

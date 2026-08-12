@@ -222,7 +222,7 @@
 |---|------|--------|-------|---|----------|
 | task_0011 | Extend `CloudProvider` with `get_capabilities()` | ✅ done | Cline | §2.2, §10 | `providers/base.py` capabilities + per-provider declarations + `GET /api/v1/providers` (registry import verified) |
 | task_0012 | Add drift detection (tfstate vs live comparison) | ✅ done | Cline | §15 | `drift.py` compare/detect/summarize + `GET /api/v1/drift`; unit-tested (unavailable providers → honest "unverifiable"); live sweep needs cloud creds (deploy) |
-| task_0013 | Standardize status model (use `models.py` constants everywhere, §43) | 🔵 in_progress | iter2-team | §43 | Replace hardcoded `"running"`/`"stopped"`/`"starting"`/`"stopping"`/`"error"`/`"unknown"`/`"loading"` literals in `app.py` + providers with `STATUS_*` constants from `models.py` |
+| task_0013 | Standardize status model (use `models.py` constants everywhere, §43) | ✅ done | iter2-team | §43 | Replaced hardcoded `"starting"`/`"stopping"`/`"error"`/`"unknown"`/`"loading"` literals in `app.py` (lines 226-227, 667, 669) + `aws.py` (lines 57,62) + `alibaba.py` (line 75) + `azure.py` (line 180 comment) with `STATUS_*` constants from `models.py`. All 22 tests PASS, `py_compile` clean. |
 
 ### Iteration 3 — Secrets Migration, RBAC, Audit Logging ⏸️ BACKLOG
 
@@ -274,7 +274,7 @@
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
-| task_0031 | Project + Environment entities (§6.1, §105) | 🔵 in_progress | iter8-team | §6.1, §105 | Create `projects.py` with Project + Environment dataclasses + registry; add `/api/v1/projects` + `/api/v1/environments` endpoints |
+| task_0031 | Project + Environment entities (§6.1, §105) | ✅ done | iter8-team | §6.1, §105 | Created `projects.py` (Project + Environment dataclasses + registry CRUD). Added `GET/POST /api/v1/projects`, `GET /api/v1/projects/<slug>`, `GET/POST /api/v1/environments` endpoints in app.py. 7 unit tests in `test_projects.py` PASS. All 29 tests PASS. |
 | task_0032 | Application model + deployment engine | ✅ done | Cline | §25-27 | `deployments/applications.py` + `/api/v1/applications/*/deployments`; rollback + prod approval gate wired; unit-tested (real host builds BLOCKED on deploy infra) |
 
 ### Iteration 9 — OPA Policy Engine, Multi-Tenancy, GitOps ⏸️ BACKLOG
