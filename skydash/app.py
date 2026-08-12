@@ -90,6 +90,19 @@ def _add_deprecation_header(response):
         response.headers["X-API-Version"] = "deprecated; use /api/v1/ instead"
     return response
 
+# --- Prometheus metrics: count every response (§45, §81-82) -----------------
+# Wired into prometheus_metrics.count_request() so skydash_http_requests_total
+# is fed from a single after_request hook (no per-route decorators needed).
+@app.after_request
+def _count_prometheus_requests(response):
+    try:
+        from prometheus_metrics import count_request
+        count_request()
+    except Exception:  # pragma: no cover - never break a response for metrics
+        pass
+    return response
+
+
 # --- API v1 Blueprint routes (§62, §125) ---
 # Standardized envelope: {"status": "ok"|"error", "data": ..., "error": ...}
 def _envelop(data, status="ok"):
@@ -516,6 +529,23 @@ def v1_openapi_json():
 def v1_swagger_ui():
     """GET /api/v1/docs — Swagger UI rendered from the live spec (§125)."""
     return render_template_string(SWAGGER_UI_HTML)
+
+
+@api_v1.route("/metrics")
+def v1_metrics():
+    """GET /api/v1/metrics — Prometheus text exposition (§45, §81-82).
+
+    Intentionally **public** (Prometheus scrapes unauthenticated from
+    127.0.0.1) and **not** rate-limited. Serves only inventory counts and a
+    cheap provider-availability probe — never the live power-state poll, so the
+    scrape cannot be abused against the cloud APIs.
+    """
+    from prometheus_metrics import render_metrics
+
+    return Response(
+        render_metrics(),
+        mimetype="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 # Register the v1 blueprint
