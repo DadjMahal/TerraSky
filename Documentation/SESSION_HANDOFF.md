@@ -12,7 +12,7 @@ systemd-managed, GitHub Actions CI/CD. Inventory from `terraform/terraform.tfsta
 
 ## 2. Honest current state (verified, not claimed)
 
-- **Live:** http://74.248.232.219/ serves `Login &mdash; SkyDash` (HTTP 200 via nginx).
+- **Live:** http://167.172.188.248/ serves `Login &mdash; SkyDash` (HTTP 200 via nginx).
 - **CI/CD:** GitHub Actions deploy works end-to-end (sync → nginx → systemd → health check).
 - **Done so far:** Cat 1 (#1–10 Dashboard UI/UX) + **Cat 2 (#11–19 Detail pages: tabs,
   progress loader, specs gauges, network topology, status timeline, web SSH terminal
@@ -67,12 +67,22 @@ lazy-imported inside provider methods to keep 1 GB RAM usage low.
 ## 4. Deployment / CI-CD (current, verified)
 
 1. Push to `main` → GitHub Actions `deploy.yml`.
-2. `rsync` `skydash/`, `terraform/`, `deploy/nginx/` to server `power-vm-2`.
+2. `rsync` `skydash/`, `terraform/`, `deploy/nginx/` to server.
 3. Configure nginx: install `skydash.conf` into sites-enabled, remove default, `nginx -t` + reload.
 4. `systemctl restart skydash.service` (Flask on :8080, `EnvironmentFile=terraform/.env`).
 5. Health check: HTTP 200 + title contains "SkyDash" on :80; then external check.
-- Server SSH deployment key: `~/.ssh/github_deploy` (CI uses `secrets.SSH_PRIVATE_KEY`).
-- Deploy target hostname is `power-vm-2` (public 74.248.232.219; my sandbox is `free-vm`).
+
+- **Server:** `digital-2` (public IP `167.172.188.248`).
+- **SSH:** User `volodro`, port 22, deploy key `skydash-deploy@github-actions` (ED25519).
+  Key stored in GitHub secret `SSH_PRIVATE_KEY`. Public key added to
+  `/home/volodro/.ssh/authorized_keys`.
+- **GitHub secret `SERVER_IP`:** `167.172.188.248` (updated 2026-08-13).
+- **Passwordless sudo:** `/etc/sudoers.d/volodro-deploy` grants `volodro NOPASSWD: ALL`
+  (required for CI/CD nginx install + systemd restart steps).
+- **CI/CD deploy key note:** The deploy SSH key pair was regenerated on 2026-08-13
+  and added to both `authorized_keys` and the `SSH_PRIVATE_KEY` GitHub secret.
+  The `HERMES_SSH_KEY` secret (last updated 2026-08-02) is for the Hermes agent
+  SSH bridge, not for CI/CD deployment.
 
 ## 5. Known pitfalls / lessons (avoid repeating)
 
@@ -88,6 +98,9 @@ lazy-imported inside provider methods to keep 1 GB RAM usage low.
    artifact dirs there or they won't commit.
 6. **Cloud SDKs must be installed in the server venv** — else Azure/Oracle/Alibaba
    providers report `error` on status. Ensure `requirements.txt` is pip-installed.
+7. **Passwordless sudo required for CI/CD** — the `volodro` user must have NOPASSWD
+   sudo (`volodro ALL=(ALL) NOPASSWD: ALL` in `/etc/sudoers.d/`) for the nginx install
+   and systemd restart steps in the deploy workflow.
 
 ## 6. Key file/command map
 
@@ -97,7 +110,7 @@ lazy-imported inside provider methods to keep 1 GB RAM usage low.
 - Scripts: `scripts/session_start.sh` (resume-aware) · `scripts/session_end.sh` (commit+cleanup)
   · `scripts/status.sh` (live state)
 - Live stack: `systemctl status skydash` · nginx `/etc/nginx/sites-enabled/skydash.conf`
-- Server: SSH `ssh -i ~/.ssh/github_deploy volodro@74.248.232.219` (host `power-vm-2`)
+- Server: SSH `ssh -i ~/.ssh/deploy_key volodro@167.172.188.248`
 
 ## 7. Next recommended path
 
