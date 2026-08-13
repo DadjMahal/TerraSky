@@ -20,11 +20,12 @@ from flask_limiter.util import get_remote_address
 
 from models import STATUS_ERROR, STATUS_STARTING, STATUS_STOPPING, STATUS_UNKNOWN
 from providers.registry import get_provider
-from state_reader import get_instance_by_slug, get_instances
+from state_reader import get_instance_by_slug, get_instances, TERRAFORM_DIR
 from auth import auth_bp, init_auth, login_required, get_current_user
 import hermes_agent
 import config_store
 import status_history
+import projects
 from auth import limiter as auth_limiter
 
 # --- Security & Governance (Iteration 8; §31, §33-37, §67-68, §76-80, §107) ---
@@ -587,6 +588,62 @@ def v1_environments():
                      resource=f"environments/{env.slug}",
                      detail={"name": env.name, "kind": env.kind}, outcome="success")
     return _envelop(env.to_dict()), 201
+
+
+@api_v1.route("/tfstate")
+@login_required
+def v1_tfstate():
+    """GET /api/v1/tfstate — state file metadata (§11)."""
+    from state_reader import tfstate_info
+
+    return _envelop(tfstate_info())
+
+
+@api_v1.route("/tfstate/drift")
+@login_required
+def v1_tfstate_drift():
+    """GET /api/v1/tfstate/drift — desired vs live drift (§15)."""
+    from drift import detect_instances, summarize
+    from state_reader import get_instances
+
+    results = detect_instances(get_instances())
+    return _envelop({"results": results, "summary": summarize(results)})
+
+
+@api_v1.route("/workspaces")
+@login_required
+def v1_workspaces():
+    """GET /api/v1/workspaces — workspace list from tfstate (§12)."""
+    from state_reader import get_workspaces
+
+    return _envelop({"workspaces": get_workspaces()})
+
+
+@api_v1.route("/tfstate/plan")
+@login_required
+def v1_tfstate_plan():
+    """GET /api/v1/tfstate/plan — parse a Terraform plan JSON (§102-104).
+
+    The plan JSON path is read from the ``TF_PLAN_FILE`` env var (default:
+    ``terraform/tfplan.json``). If the file is absent, returns an empty
+    parsed plan (no execution — this is read-only).
+    """
+    import json
+    from tfplan import parse_plan
+
+    plan_path = os.environ.get("TF_PLAN_FILE", os.path.join(TERRAFORM_DIR, "tfplan.json"))
+    try:
+        with open(plan_path, "r") as f:
+            plan = json.load(f)
+    except FileNotFoundError:
+        return _envelop(parse_plan({}))
+    except Exception as exc:
+        return jsonify({"status": "error", "error": f"plan parse error: {exc}",
+                        "code": "PLAN_ERROR"}), 500
+    return _envelop(parse_plan(plan))
+
+
+@api_v1.route("/openapi.json")
 @login_required
 def v1_openapi_json():
     """GET /api/v1/openapi.json — machine-readable API spec (§62)."""
@@ -671,6 +728,7 @@ if os.environ.get("SKYDASH_SCHEDULER", "").strip() == "1":
     import scheduler as _skd
 
     _skd.register("refresh-status-cache", interval_seconds=_STATUS_TTL, fn=_status_cache.clear)
+    _skd.register("tfstate-sync", interval_seconds=300, fn=lambda: _status_cache.clear())
     _skd.start()
 
 

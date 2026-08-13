@@ -81,9 +81,147 @@
 
 /* ---- Region map --------------------------------------------------------------- */
 #region-map-wrap { overflow: hidden; }
-#region-map { height: 380px; width: 100%; background: var(--void); z-index: 0; border-radius: var(--radius-md); }
+#region-map { height: 460px; width: 100%; background: var(--void); z-index: 0; border-radius: var(--radius-md); }
 #map-error { color: var(--text-muted); }
 .region-marker { display: flex; align-items: center; justify-content: center; }
+
+/* ---- Futuristic marker styling ---- */
+.skydash-futuristic-marker {
+    position: relative;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.fm-ring {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid;
+    opacity: 0.9;
+    animation: fm-ring-pulse 2.5s ease-in-out infinite;
+}
+.fm-pulse {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    opacity: 0.75;
+    animation: fm-beacon-pulse 2s ease-in-out infinite;
+}
+.fm-core {
+    position: relative;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid;
+    z-index: 2;
+    box-shadow: 0 0 8px rgba(79, 200, 232, 0.5);
+}
+
+@keyframes fm-ring-pulse {
+    0% { transform: scale(0.7); opacity: 0.9; }
+    50% { transform: scale(1.8); opacity: 0; }
+    100% { transform: scale(0.7); opacity: 0; }
+}
+@keyframes fm-beacon-pulse {
+    0%, 100% { transform: scale(0.7); opacity: 0.75; box-shadow: 0 0 0 0; }
+    50% { transform: scale(1.4); opacity: 0; box-shadow: 0 0 0 10px rgba(79, 200, 232, 0); }
+}
+
+/* ---- Popup styling ---- */
+.fm-popup-wrapper .leaflet-popup-content-wrapper {
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 0 20px rgba(79, 200, 232, 0.2);
+    padding: 0;
+}
+.fm-popup-wrapper .leaflet-popup-tip {
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border-strong);
+}
+.fm-popup {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--text);
+    min-width: 240px;
+}
+.fm-popup-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-3);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.fm-provider-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(255,255,255,0.4);
+}
+.fm-name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--text);
+}
+.fm-popup-body {
+    padding: 0.6rem 0.8rem;
+}
+.fm-pf-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.15rem 0;
+    border-bottom: 1px solid var(--border);
+}
+.fm-pf-row:last-child { border-bottom: none; }
+.fm-pf-label {
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+}
+.fm-pf-value {
+    color: var(--text);
+    text-align: right;
+    font-weight: 500;
+}
+.fm-pf-tags {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+}
+.fm-pf-tags .tag-pill { margin: 0; }
+.fm-ip {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    word-break: break-all;
+}
+.fm-popup-footer {
+    padding: 0.4rem 0.8rem 0.6rem;
+    text-align: right;
+    border-top: 1px solid var(--border);
+}
+.fm-detail-link {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.6rem;
+}
+
+/* ---- Card highlight on marker hover ---- */
+.fm-card-highlight {
+    box-shadow: 0 0 0 3px var(--accent-strong) !important;
+    transform: scale(1.02);
+    transition: all 0.2s ease;
+}
+
+/* ---- Hide default leaflet zoom control on map ---- */
+.leaflet-control-zoom {
+    display: none !important;
+}
 
 /* ---- Tag multi-select dropdown ------------------------------------------------ */
 .tag-dropdown { position: relative; width: 100%; }

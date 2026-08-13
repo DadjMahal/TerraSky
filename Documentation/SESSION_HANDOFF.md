@@ -21,6 +21,28 @@ systemd-managed, GitHub Actions CI/CD. Inventory from `terraform/terraform.tfsta
 - **Remaining:** 82 task-board items (Hermes/Cline agents, logging, Cloudflare,
   monitoring, backups, ports) — see `TASKS.md`. "Set secure admin password" moved to Backlog.
 
+## 0. Current session (2026-08-13)
+
+- **Enhanced Interactive Region Map (#4):** Upgraded the Leaflet.js region map from
+  simple provider-coloured markers to a **futuristic animated map** with:
+  - **Animated pulsing markers** — layered icons with a provider-coloured outer ring
+    (`fm-ring`), a status-coloured beacon pulse (`fm-pulse`), and a sharp inner core
+    (`fm-core`). Colors from `PROVIDER_COLOR` and `STATUS_COLOR` maps.
+  - **Network topology connection lines** — dashed polylines between instances:
+    - **Hub lines** (primary AWS/gateway → all others): cyan `#4FC8E8`, thicker,
+      animating via `dashOffset` shifting in `requestAnimationFrame`.
+    - **Mesh lines** (peer-to-peer): dimmer gray dashed lines, static.
+  - **Rich popups** — click any marker for a full details card: provider dot,
+    status badge, instance type, region, availability zone, public/private IPs,
+    OS, tags, and a button linking to `/instance/{slug}`.
+  - **Marker ↔ card highlight sync** — hovering a map marker highlights the matching
+    `.card-col[data-slug]` on the dashboard with `.fm-card-highlight` glow.
+  - **Auto-fit bounds** — map auto-zooms to show all markers with padding.
+  - **Lifecycle API** — `refresh()`, `highlight(slugs)`, `destroy()` for clean
+    re-rendering via `dashboard.js` toggle.
+  - Files: `static/js/region-map.js`, `static/css/dashboard.css`,
+    `templates/index.html`, `templates/base.html` (Leaflet CSS link added).
+
 ## 3. Architecture (how files fit together)
 
 ```

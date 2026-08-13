@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
+from typing import Any
 
 from models import (
     ALIBABA,
@@ -305,3 +307,90 @@ def get_instance_by_slug(slug: str) -> Instance | None:
         if inst.slug == slug:
             return inst
     return None
+
+
+# --- tfstate metadata (§11) ----------------------------------------------------
+
+def tfstate_info() -> dict[str, Any]:
+    """Return metadata about the Terraform state file (§11).
+
+    Includes resource count, managed-resource count, terraform version,
+    state serial / lineage, and the file's last-modified timestamp.
+    Read-only: never raises — returns ``{"available": False}`` on error.
+    """
+    try:
+        state = load_state()
+    except Exception:  # pragma: no cover - defensive
+        return {"available": False, "error": "state file not readable"}
+
+    resources = state.get("resources", [])
+    managed = [r for r in resources if r.get("mode") == "managed"]
+    instances = []
+    for res in managed:
+        if res.get("_build") is not None or res.get("instances"):
+            instances.append(res)
+
+    info: dict[str, Any] = {
+        "available": True,
+        "terraform_version": state.get("version", ""),
+        "serial": state.get("serial", 0),
+        "lineage": state.get("lineage", ""),
+        "resource_count": len(resources),
+        "managed_count": len(managed),
+        "instance_count": len(get_instances()),
+    }
+
+    # Last-modified from the file mtime (§13: state versioning/audit)
+    try:
+        mtime = os.path.getmtime(STATE_FILE)
+        info["last_modified"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(mtime))
+        info["last_modified_epoch"] = mtime
+    except Exception:
+        info["last_modified"] = ""
+        info["last_modified_epoch"] = 0
+
+    # Derive a coarse workspace from terraform {workspace dir} or env override
+    info["workspace"] = os.environ.get("TF_WORKSPACE", "default")
+    return info
+
+
+# --- Workspaces (§12) ----------------------------------------------------------
+
+def get_workspaces() -> list[dict[str, Any]]:
+    """Return workspace/environment names derived from tfstate (§12).
+
+    Terraform workspaces are not stored inside the state JSON itself; the
+    canonical workspace is the one that produced this state file. We derive a
+    workspace list from:
+      1. The ``TF_WORKSPACE`` env var (explicit override).
+      2. The ``environment`` tag on each instance (if present).
+      3. A ``default`` workspace as fallback.
+
+    Each entry: ``{"name": str, "is_current": bool, "instance_count": int}``.
+    """
+    try:
+        state = load_state()
+    except Exception:
+        return [{"name": "default", "is_current": True, "instance_count": 0}]
+
+    current_ws = os.environ.get("TF_WORKSPACE", "default")
+
+    # Collect environment tags from all instances
+    env_counts: dict[str, int] = {}
+    for inst in get_instances():
+        env = (inst.tags or {}).get("environment", current_ws)
+        env_counts[env] = env_counts.get(env, 0) + 1
+
+    if not env_counts:
+        return [{"name": current_ws, "is_current": True, "instance_count": 0}]
+
+    workspaces = []
+    for name, count in sorted(env_counts.items()):
+        workspaces.append({
+            "name": name,
+            "is_current": name == current_ws,
+            "instance_count": count,
+        })
+    if not any(w["name"] == current_ws for w in workspaces):
+        workspaces.append({"name": current_ws, "is_current": True, "instance_count": 0})
+    return workspaces

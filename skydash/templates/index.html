@@ -161,7 +161,19 @@
 <script>
     // Expose instance list to the region-map module.
     window.__SKYDASH_INSTANCES__ = [
-        {% for i in instances %}{slug: {{ i.slug|tojson }}, name: {{ i.name|tojson }}, provider: {{ i.provider|tojson }}, region: {{ i.region|tojson }}, instance_type: {{ i.instance_type|tojson }}},
+        {% for i in instances %}{
+            slug: {{ i.slug|tojson }},
+            name: {{ i.name|tojson }},
+            provider: {{ i.provider|tojson }},
+            region: {{ i.region|tojson }},
+            instance_type: {{ i.instance_type|tojson }},
+            status: {{ i.status|tojson }},
+            availability_zone: {{ i.availability_zone|tojson }},
+            public_ip: {{ i.public_ip|tojson }},
+            private_ip: {{ i.private_ip|tojson }},
+            os: {{ i.os|tojson }},
+            tags: {{ i.tags|tojson }}
+        },
         {% endfor %}
     ];
 </script>

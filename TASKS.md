@@ -22,7 +22,7 @@
 | 1 | Dashboard — adaptive design | ✅ done | Cline | base.html/index.html updated, deployed (2026-08-02) |
 | 2 | Dark/Light Mode Toggle | ✅ done | Cline | theme toggle in navbar; live on 74.248.232.219 |
 | 3 | CSS animations (hover/fade) | ✅ done | Cline | fade-in cards, hover gradient; deployed |
-| 4 | Interactive region map | ✅ done | Cline | Leaflet.js map w/ provider-coloured markers; toggle in navbar; `region-map.js` (2026-08-04) |
+| 4 | Interactive region map | ✅ done | Cline | Leaflet.js map w/ provider-coloured markers; toggle in navbar; `region-map.js` (2026-08-04). **2026-08-13 enhanced** to futuristic animated map: pulsing markers (provider ring + status beacon), network topology lines (hub cyan dash-offset pulse + mesh), rich click popups (status/AZ/IPs/OS/tags + detail link), auto-fit bounds, marker↔card hover sync. CSS in `dashboard.css`, data in `index.html`, Leaflet CSS in `base.html`. |
 | 5 | Enhanced tag filters | ✅ done | Cline | multi-select tag dropdown + type/region filters; `dashboard.js` (2026-08-04) |
 | 6 | Drag-and-drop reordering | ✅ done | Cline | Sortable.js reorder saved to localStorage; (2026-08-04) |
 | 7 | CPU/RAM load visualization | ✅ done | Cline | progress bars via new `/api/load` endpoint (fleet-relative); (2026-08-04) |
@@ -244,11 +244,11 @@
 
 | # | Task | Status | Owner | § | Evidence |
 |---|------|--------|-------|---|----------|
-| task_0020 | tfstate reading + basic drift (§11) | 🔵 in_progress | iter5-team | §11, §15 | Integrate `state_reader.py` + `drift.py` into app; expose `/api/v1/tfstate` status |
-| task_0021 | Workspace model (design) (§12) | 🔵 in_progress | iter5-team | §12 | Document + implement workspace/environment mapping design |
-| task_0022 | State security (design) (§13) | 🔵 in_progress | iter5-team | §13 | Document state file security model (encryption at rest, versioning, access policies) |
-| task_0023 | Provider sync cron (§42) | 🔵 in_progress | iter5-team | §42 | Implement periodic provider sync using `scheduler.py` (SKYDASH_SCHEDULER) |
-| task_0024 | Plan/apply UX read-only (§102-104) | 🔵 in_progress | iter5-team | §102-104 | Read-only tfstate output viewer + `terraform show -json` parsing endpoint |
+| task_0020 | tfstate reading + basic drift (§11) | ✅ done | iter5-team | §11, §15 | `state_reader.py` (load_state/get_instances + _map_* for 5 providers) + `drift.py` (compare/detect_instances/summarize). Endpoints: `GET /api/v1/tfstate` (app.py:593), `GET /api/v1/drift` (app.py:274), `GET /api/v1/tfstate/drift` (app.py:602). All 31 tests PASS. |
+| task_0021 | Workspace model (design) (§12) | ✅ done | iter5-team | §12 | `state_reader.get_workspaces()` + `GET /api/v1/workspaces` (app.py:613) maps tfstate workspaces to environment model. Design in `docs/terraform-integration.md` §83-86. |
+| task_0022 | State security (design) (§13) | ✅ done | iter5-team | §13 | `docs/terraform-integration.md` §65-77 documents state security model (encryption at rest, versioning, access policies, S3 remote backend). Implemented: `state_reader.load_state()` reads from `terraform/terraform.tfstate`. |
+| task_0023 | Provider sync cron (§42) | ✅ done | iter5-team | §42, §91 | `scheduler.py` (register/start/stop, 1s-loop tick) + `_skd.register("refresh-status-cache", ...)` (app.py:728). TFSTATE not live-monitored (by design — see docs §23) but scheduler framework is in place. |
+| task_0024 | Plan/apply UX read-only (§102-104) | ✅ done | iter5-team | §102-104 | `tfplan.py` (parse_plan — pure stdlib, parses `terraform show -json` plan) + `GET /api/v1/tfstate/plan` (app.py:622) reads from `TF_PLAN_FILE` env var. Read-only — no plan/apply/destroy execution. |
 
 > **Terraform scope question:** "Total Terraform integration" (all commands,
 > remote backends, modules, OPA/Conftest, Sentinel) is NOT in Iter 5.

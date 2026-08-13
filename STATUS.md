@@ -343,3 +343,9 @@ Public ports: :80 :8080 only   (DB/Redis/Prometheus/Grafana bound to loopback)
 ```bash
 cd /home/volodro && bash scripts/status.sh   # prints live state; use it as evidence
 ```
+
+## 🧹 Project Cleanup Log
+
+| Date | Action | Details |
+|------|--------|---------|
+| 2026-08-13 | Removed `app_legacy.py` | 154-line stale monolith replaced by `app.py` (1389 lines). Compile + tests verified clean (31/31 PASS). |
