@@ -100,3 +100,31 @@ cd /home/volodro && bash scripts/session_start.sh   # orients + resume-aware
 bash scripts/session_end.sh                          # sync knowledge base + commit
 bash scripts/status.sh                               # live state (reality check)
 ```
+
+## 🚀 Deployment (CI/CD — GitHub Actions)
+
+SkyDash is deployed via **GitHub Actions** to a local server (no manual deployment needed).
+Just push to `main` and the workflow handles everything:
+
+```bash
+git add .
+git commit -m "your changes"
+git push origin main    # GitHub Actions auto-deploys
+```
+
+**What the CI/CD pipeline does:**
+1. Validates Python syntax (pre-deploy gate)
+2. `rsync` files to server at `167.172.188.248` (user: `volodro`)
+3. Configures nginx reverse-proxy (port 80 → Flask 8080)
+4. Installs Python deps in venv, restarts `skydash.service` via systemd
+5. Health check: HTTP 200 + "SkyDash" title on port 80
+
+**Server:** `digital-2` @ `167.172.188.248` (was `74.248.232.219` — IP updated 2026-08-13)
+**SSH:** `volodro` user, ED25519 deploy key (regenerated 2026-08-13)
+**GitHub secrets:** `SERVER_IP` (updated), `SSH_PRIVATE_KEY` (updated), `HERMES_SSH_KEY` (Hermes agent)
+
+> **Note:** If you need to deploy manually (e.g., CI/CD is broken):
+> 1. `cp /root/TerraSky/skydash/* /home/volodro/skydash/`
+> 2. `rm -rf /home/volodro/skydash/__pycache__/`
+> 3. `systemctl restart skydash.service`
+> 4. Verify: `systemctl is-active skydash.service` + `curl -s https://localhost/login`
