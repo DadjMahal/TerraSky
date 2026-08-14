@@ -39,7 +39,7 @@ _DROPLET_STATE_MAP = {
 
 class DigitalOceanProvider(CloudProvider):
     key = "digitalocean"
-    capabilities = ("read", "start", "stop", "reboot", "get_logs")
+    capabilities = ("read", "start", "stop", "reboot", "get_logs", "get_security_groups")
 
     def available(self) -> bool:
         # A personal access token is required to call the DO API at all.
@@ -111,3 +111,69 @@ class DigitalOceanProvider(CloudProvider):
     def get_instance_details(self, instance: Instance) -> Instance:
         """Enrich with live status (base impl refreshes live status + can_manage)."""
         return super().get_instance_details(instance)
+
+    def get_security_groups(self, instance: Instance) -> list:
+        """Return DigitalOcean Cloud Firewalls applied to the Droplet.
+
+        DO firewalls are referenced by Droplet. We list all firewalls and pick
+        the ones referencing this Droplet id, then parse their
+        ``inbound_rules`` and ``outbound_rules``.
+        """
+        from providers.security_groups import make_group, make_rule
+
+        if not self.available():
+            return []
+        try:
+            resp = self._request("GET", "/firewalls")
+            resp.raise_for_status()
+            firewalls = (resp.json() or {}).get("firewalls", []) or []
+        except Exception as e:
+            instance.error = "DigitalOcean firewall lookup error: " + str(e)
+            return []
+
+        droplet_id = instance.instance_id
+        droplet_name = instance.display_name
+        groups: list = []
+        for fw in firewalls:
+            applied = fw.get("droplets", []) or []
+            attached = any(
+                str(d.get("id") or d.get("name", "")) == str(droplet_id)
+                or str(d.get("name", "")) == str(droplet_name)
+                for d in applied
+            )
+            if not attached:
+                continue
+            inbound, outbound = [], []
+            for r in fw.get("inbound_rules", []) or []:
+                proto = r.get("protocol", "all")
+                pf = r.get("ports")
+                port_from, port_to = None, None
+                if isinstance(pf, str) and "-" in pf:
+                    a, b = pf.split("-", 1)
+                    port_from, port_to = a.strip(), b.strip()
+                elif isinstance(pf, str) and pf.isdigit():
+                    port_from = port_to = pf
+                src = r.get("source", {})
+                source = src.get("address", src.get("security_group_id", ""))
+                inbound.append(make_rule(proto, port_from, port_to,
+                                         source or "0.0.0.0/0", "inbound",
+                                         "allow", r.get("description", "") or ""))
+            for r in fw.get("outbound_rules", []) or []:
+                proto = r.get("protocol", "all")
+                pf = r.get("ports")
+                port_from, port_to = None, None
+                if isinstance(pf, str) and "-" in pf:
+                    a, b = pf.split("-", 1)
+                    port_from, port_to = a.strip(), b.strip()
+                elif isinstance(pf, str) and pf.isdigit():
+                    port_from = port_to = pf
+                dest = r.get("destination", {})
+                dest_addr = dest.get("address", dest.get("security_group_id", ""))
+                outbound.append(make_rule(proto, port_from, port_to,
+                                          dest_addr or "0.0.0.0/0", "outbound",
+                                          "allow", r.get("description", "") or ""))
+            groups.append(make_group(
+                str(fw.get("id", "")), fw.get("name", ""),
+                "DO Cloud Firewall", self.key, inbound, outbound,
+            ))
+        return groups

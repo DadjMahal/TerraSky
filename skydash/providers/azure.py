@@ -31,7 +31,7 @@ _AZURE_POWER_MAP = {
 
 class AzureProvider(CloudProvider):
     key = "azure"
-    capabilities = ("read", "start", "stop", "reboot", "get_logs")
+    capabilities = ("read", "start", "stop", "reboot", "get_logs", "get_security_groups")
 
     # Cached clients to avoid repeated OAuth2 token acquisition
     _cached_client = None
@@ -191,3 +191,83 @@ class AzureProvider(CloudProvider):
             return True, f"Stop (deallocate) request sent to {instance.name}"
         except Exception as e:
             return False, f"Azure stop error: {e}"
+
+    def get_security_groups(self, instance: Instance) -> list:
+        """Return Azure Network Security Groups attached to the instance."""
+        from providers.security_groups import make_group, make_rule
+
+        rg, vm = self._rg_vm(instance)
+        if not rg or not vm:
+            return []
+
+        net_client = self._network_client()
+        if not net_client:
+            return []
+
+        nsg_ids: list = []
+        try:
+            vm_data = self._client().virtual_machines.get(rg, vm, expand="instanceView")
+            for ni_ref in (vm_data.network_profile.network_interfaces or []):
+                ni_name = ni_ref.id.split("/")[-1]
+                try:
+                    ni = net_client.network_interfaces.get(rg, ni_name)
+                except Exception:
+                    continue
+                for ip_cfg in (ni.ip_configurations or []):
+                    nsg = getattr(ip_cfg, "network_security_group", None)
+                    if nsg and getattr(nsg, "id", None):
+                        if nsg.id not in nsg_ids:
+                            nsg_ids.append(nsg.id)
+                    subnet = getattr(ip_cfg, "subnet", None)
+                    if subnet is not None:
+                        sub_nsg = getattr(subnet, "network_security_group", None)
+                        if sub_nsg and getattr(sub_nsg, "id", None):
+                            if sub_nsg.id not in nsg_ids:
+                                nsg_ids.append(sub_nsg.id)
+        except Exception as e:
+            instance.error = "Azure NSG discovery error: " + str(e)
+
+        groups: list = []
+        for nsg_id in nsg_ids:
+            nsg_name = nsg_id.split("/")[-1]
+            try:
+                nsg = net_client.network_security_groups.get(rg, nsg_name)
+            except Exception:
+                continue
+
+            def _parse_rule(rule, direction):
+                proto = getattr(rule, "protocol", "Tcp") or "Any"
+                prio = proto.lower()
+                src = getattr(rule, "source_address_prefix", "0.0.0.0/0") or "0.0.0.0/0"
+                from_port = getattr(rule, "source_port_range", None)
+                if not from_port:
+                    from_port = getattr(rule, "destination_port_range", None)
+                to_port = from_port
+                access = getattr(rule, "access", "Allow") or "Allow"
+                action = "allow" if str(access).lower() == "allow" else "deny"
+                desc = getattr(rule, "description", "") or ""
+                return make_rule(prio, from_port, to_port, str(src),
+                                 direction, action, desc or "")
+
+            inbound, outbound = [], []
+            for rule in getattr(nsg, "security_rules", []) or []:
+                direction = (getattr(rule, "direction", "") or "").lower()
+                if direction == "inbound":
+                    inbound.append(_parse_rule(rule, "inbound"))
+                elif direction == "outbound":
+                    outbound.append(_parse_rule(rule, "outbound"))
+            for rule in getattr(nsg, "default_security_rules", []) or []:
+                direction = (getattr(rule, "direction", "") or "").lower()
+                if direction == "inbound":
+                    inbound.append(_parse_rule(rule, "inbound"))
+                elif direction == "outbound":
+                    outbound.append(_parse_rule(rule, "outbound"))
+
+            groups.append(make_group(
+                nsg_name, nsg_name, "Azure NSG", self.key, inbound, outbound,
+            ))
+
+        if not groups and instance.security_groups:
+            for name in instance.security_groups:
+                groups.append(make_group(str(name), str(name), "Azure NSG", self.key))
+        return groups

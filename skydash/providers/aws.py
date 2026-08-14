@@ -32,7 +32,7 @@ _EC2_STATE_MAP = {
 
 class AwsProvider(CloudProvider):
     key = "aws"
-    capabilities = ("read", "start", "stop", "reboot", "get_logs")
+    capabilities = ("read", "start", "stop", "reboot", "get_logs", "get_security_groups")
 
     def available(self) -> bool:
         # boto3 reads credentials from the environment, so presence of the key
@@ -89,3 +89,99 @@ class AwsProvider(CloudProvider):
             return True, f"Stop request sent to {instance.name}"
         except Exception as e:
             return False, f"AWS stop error: {e}"
+
+
+    def get_security_groups(self, instance: Instance) -> list:
+        """Return AWS SecurityGroups attached to the instance.
+
+        Uses ``instance.security_groups`` (from TF state) as the primary lookup
+        hint; if those are missing it discovers the attached SGs live from the
+        EC2 instance's network interfaces via ``describe_instances``.
+        """
+        from providers.security_groups import make_group, make_rule
+
+        if not self.available():
+            return list(instance.security_groups or [])
+
+        ec2 = self._client(instance)
+
+        group_ids: list = list(instance.security_groups or [])
+        # Live discovery: walk the instance's ENIs to find every attached SG.
+        try:
+            resp = ec2.describe_instances(InstanceIds=[instance.instance_id])
+            for res in resp.get("Reservations", []) or []:
+                for inst in res.get("Instances", []) or []:
+                    for eni in inst.get("NetworkInterfaces", []) or []:
+                        for g in eni.get("Groups", []) or []:
+                            gid = g.get("GroupId")
+                            if gid and gid not in group_ids:
+                                group_ids.append(gid)
+        except Exception as e:  # noqa: BLE001 - never break the API
+            instance.error = f"AWS security groups lookup: {e}"
+
+        if not group_ids:
+            return []
+
+        groups: list = []
+        try:
+            for page in ec2.get_paginator("describe_security_groups").paginate(GroupIds=group_ids):
+                for sg in page.get("SecurityGroups", []) or []:
+                    inbound = []
+                    for p in sg.get("IpPermissions", []) or []:
+                        proto = p.get("IpProtocol", "all")
+                        pf, pt = p.get("FromPort"), p.get("ToPort")
+                        for ip in p.get("IpRanges", []) or []:
+                            desc = ip.get("Description")
+                            desc = desc if isinstance(desc, str) else ""
+                            inbound.append(make_rule(proto, pf, pt, ip.get("CidrIp"),
+                                                     "inbound", "allow", desc))
+                        for ip6 in p.get("Ipv6Ranges", []) or []:
+                            desc = ip6.get("Description")
+                            desc = desc if isinstance(desc, str) else ""
+                            inbound.append(make_rule(proto, pf, pt, ip6.get("CidrIpv6"),
+                                                     "inbound", "allow", desc))
+                        for ps in p.get("UserIdGroupPairs", []) or []:
+                            src_id = ps.get("GroupId") or ps.get("UserId") or "0.0.0.0/0"
+                            desc = ps.get("Description")
+                            desc = desc if isinstance(desc, str) else ""
+                            inbound.append(make_rule(proto, pf, pt, src_id, "inbound",
+                                                     "allow", desc))
+                        for pl in p.get("PrefixListIds", []) or []:
+                            desc = pl.get("Description")
+                            desc = desc if isinstance(desc, str) else ""
+                            inbound.append(make_rule(proto, pf, pt, pl.get("PrefixListId"),
+                                                     "inbound", "allow", desc))
+                    outbound = []
+                    for p in sg.get("IpPermissionsEgress", []) or []:
+                        proto = p.get("IpProtocol", "all")
+                        pf, pt = p.get("FromPort"), p.get("ToPort")
+                        for ip in p.get("IpRanges", []) or []:
+                            desc = ip.get("Description")
+                            desc = desc if isinstance(desc, str) else ""
+                            outbound.append(make_rule(proto, pf, pt, ip.get("CidrIp"),
+                                                      "outbound", "allow", desc))
+                        for ip6 in p.get("Ipv6Ranges", []) or []:
+                            desc = ip6.get("Description")
+                            desc = desc if isinstance(desc, str) else ""
+                            outbound.append(make_rule(proto, pf, pt, ip6.get("CidrIpv6"),
+                                                      "outbound", "allow", desc))
+                        for ps in p.get("UserIdGroupPairs", []) or []:
+                            src_id = ps.get("GroupId") or ps.get("UserId") or "0.0.0.0/0"
+                            desc = ps.get("Description")
+                            desc = desc if isinstance(desc, str) else ""
+                            outbound.append(make_rule(proto, pf, pt, src_id, "outbound",
+                                                      "allow", desc))
+                        for pl in p.get("PrefixListIds", []) or []:
+                            desc = pl.get("Description")
+                            desc = desc if isinstance(desc, str) else ""
+                            outbound.append(make_rule(proto, pf, pt, pl.get("PrefixListId"),
+                                                      "outbound", "allow", desc))
+                    groups.append(make_group(
+                        sg.get("GroupId", ""), sg.get("GroupName", ""),
+                        "AWS SecurityGroup", self.key, inbound, outbound,
+                    ))
+        except Exception as e:  # noqa: BLE001
+            instance.error = f"AWS describe_security_groups error: {e}"
+            return groups
+
+        return groups

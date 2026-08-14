@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ inst.name }} | {{ site_name }}{% endblock %}
+{% block title %}{{ format_display_name(inst) }} | {{ site_name }}{% endblock %}
 {% block nav_actions %}
             <a href="/" class="btn btn-console btn-sm"><i class="bi bi-arrow-left"></i> Dashboard</a>
 {% endblock %}
@@ -11,7 +11,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h1 class="h3 mb-0 d-flex align-items-center gap-2">
             <i class="bi {{ inst.icon }} provider-icon provider-{{ inst.provider }}"></i>
-            {{ inst.name }}
+            {{ format_display_name(inst) }}
             <span class="text-faint fs-6 fw-normal">{{ inst.provider_label }}</span>
         </h1>
         <span class="status-pill status-loading" id="status-badge" data-status="{{ inst.status }}"><span class="beacon-dot"></span>Loading</span>
@@ -25,9 +25,7 @@
     {# --- Tabbed interface --- #}
     <ul class="nav nav-tabs detail-tabs mb-3 flex-nowrap overflow-auto">
         <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tab-overview"><i class="bi bi-clipboard-data"></i> Overview</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-hardware"><i class="bi bi-cpu"></i> Hardware</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-network"><i class="bi bi-diagram-3"></i> Network</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-actions"><i class="bi bi-sliders"></i> Actions</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-files"><i class="bi bi-folder2-open"></i> Files</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-processes"><i class="bi bi-cpu"></i> Processes</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-services"><i class="bi bi-gear"></i> Services</a></li>
@@ -36,51 +34,36 @@
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-logs"><i class="bi bi-journal-text"></i> Logs</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-metrics"><i class="bi bi-graph-up"></i> Metrics</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-domains"><i class="bi bi-link-45deg"></i> Domains</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-security-groups"><i class="bi bi-shield-lock"></i> Security Groups</a></li>
         {% if "hermes" in inst.slug %}<li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-ssh"><i class="bi bi-terminal"></i> SSH</a></li>{% endif %}
     </ul>
     <div class="tab-content">
 
-        {# --- Overview --- #}
+                {# --- Overview (merged Overview + Hardware + Actions/Danger zone) --- #}
         <div class="tab-pane fade show active" id="tab-overview">
             <div class="row g-3 kv-grid">
-                <div class="col-6 col-md-4"><div class="kv-label">Name</div><div class="kv-value">{{ inst.name }}</div></div>
-                <div class="col-6 col-md-4"><div class="kv-label">Display name</div><div class="kv-value">{{ inst.display_name or '—' }}</div></div>
-                <div class="col-6 col-md-4"><div class="kv-label">Provider</div><div class="kv-value">{{ inst.provider_label }}</div></div>
-                <div class="col-6 col-md-4"><div class="kv-label">Region</div><div class="kv-value">{{ inst.region or '—' }}</div></div>
-                <div class="col-6 col-md-4"><div class="kv-label">Zone</div><div class="kv-value">{{ inst.availability_zone or '—' }}</div></div>
-                <div class="col-6 col-md-4"><div class="kv-label">Status</div><div class="kv-value text-capitalize">{{ inst.status }}</div></div>
-                <div class="col-6 col-md-4"><div class="kv-label">Public IP</div><div class="kv-value"><code data-ip="public">{{ inst.public_ip or '—' }}</code></div></div>
-                <div class="col-6 col-md-4"><div class="kv-label">Private IP</div><div class="kv-value"><code data-ip="private">{{ inst.private_ip or '—' }}</code></div></div>
-                <div class="col-6 col-md-4"><div class="kv-label">Created</div><div class="kv-value">{{ inst.creation_date or '—' }}</div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Name</div><div class="kv-value">{{ format_display_name(inst) }}</div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Provider</div><div class="kv-value">{{ inst.provider_label if inst.provider_label else 'N/A' }}</div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Region</div><div class="kv-value">{{ format_region(inst) }}</div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Zone</div><div class="kv-value">{{ format_zone(inst) }}</div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Status</div><div class="kv-value">{{ format_status(inst) }}</div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Public IP</div><div class="kv-value"><code data-ip="public">{{ format_public_ip(inst) }}</code></div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Private IP</div><div class="kv-value"><code data-ip="private">{{ format_private_ip(inst) }}</code></div></div>
+                <div class="col-6 col-md-4"><div class="kv-label">Created</div><div class="kv-value">{{ format_created(inst) }}</div></div>
                 {% if inst.tags %}<div class="col-12 mt-1"><div class="kv-label mb-2">Tags</div>{% for k, v in inst.tags.items() %}<span class="tag-pill me-1"><i class="bi bi-tag"></i>{{ k }}: {{ v }}</span>{% endfor %}</div>{% endif %}
             </div>
-        </div>
 
-        {# --- Hardware specs visualization --- #}
-        <div class="tab-pane fade" id="tab-hardware">
-            <div class="row g-3 kv-grid mb-4">
-                <div class="col-6 col-md-3"><div class="kv-label">Instance type</div><div class="kv-value">{{ inst.instance_type or '—' }}</div></div>
-                <div class="col-6 col-md-3"><div class="kv-label">OS</div><div class="kv-value">{{ inst.os or '—' }}</div></div>
-                <div class="col-6 col-md-3"><div class="kv-label">CPU</div><div class="kv-value">{{ inst.cpu or '—' }}</div></div>
-                <div class="col-6 col-md-3"><div class="kv-label">RAM</div><div class="kv-value">{{ inst.ram or '—' }}</div></div>
-                <div class="col-6 col-md-3"><div class="kv-label">Disk</div><div class="kv-value">{{ inst.disk_size or '—' }}</div></div>
+            {# --- Hardware specs (merged from former tab-hardware) --- #}
+            <div class="row g-3 kv-grid mb-4 mt-2">
+                <div class="col-6 col-md-3"><div class="kv-label">Instance type</div><div class="kv-value">{{ format_type(inst) }}</div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">OS</div><div class="kv-value">{{ format_os(inst) }}</div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">CPU</div><div class="kv-value">{{ format_cpu(inst) }}</div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">RAM</div><div class="kv-value">{{ format_ram(inst) }}</div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">Disk</div><div class="kv-value">{{ format_disk(inst) }}</div></div>
             </div>
             <div id="specs-host"></div>
-        </div>
 
-        {# --- Network topology --- #}
-        <div class="tab-pane fade" id="tab-network">
-            <div class="row g-3 kv-grid mb-4">
-                <div class="col-6 col-md-3"><div class="kv-label">Public IP</div><div class="kv-value"><code data-ip="public">{{ inst.public_ip or '—' }}</code></div></div>
-                <div class="col-6 col-md-3"><div class="kv-label">Private IP</div><div class="kv-value"><code data-ip="private">{{ inst.private_ip or '—' }}</code></div></div>
-                <div class="col-6 col-md-3"><div class="kv-label">DNS (public)</div><div class="kv-value">{{ inst.public_dns or '—' }}</div></div>
-                <div class="col-6 col-md-3"><div class="kv-label">DNS (private)</div><div class="kv-value">{{ inst.private_dns or '—' }}</div></div>
-            </div>
-            <div id="topology-host"></div>
-        </div>
-
-        {# --- Actions w/ staged progress loader --- #}
-        <div class="tab-pane fade" id="tab-actions">
+            {# --- Actions + Danger zone (merged from former tab-actions) --- #}
             <div class="btn-group mb-3" id="action-group">
                 <button class="btn btn-success" data-action="start" {% if not inst.can_manage %}disabled{% endif %}><i class="bi bi-play-fill"></i> Start</button>
                 <button class="btn btn-outline-secondary" data-action="refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
@@ -88,20 +71,64 @@
             <div class="action-progress" id="action-progress"></div>
             <div class="danger-zone mt-4" id="danger-zone">
                 <h2 class="h6 text-uppercase danger-title"><i class="bi bi-exclamation-triangle"></i> Danger zone</h2>
-                <p class="small text-faint">Destructive operations are separated (§86) and require typing the server name. Production resources additionally need an approval token (§107).</p>
+                <p class="small text-faint">Destructive operations require typing the server name. Production resources additionally need an approval token (§107).</p>
                 <div class="btn-group">
                     <button type="button" class="btn btn-outline-danger" data-danger-action="stop" {% if not inst.can_manage %}disabled{% endif %}><i class="bi bi-stop-fill"></i> Stop</button>
                 </div>
                 <div class="small text-danger mt-2" id="danger-zone-note"></div>
             </div>
             <div class="small text-faint mt-3 font-mono">
-                Instance ID: <code>{{ inst.instance_id }}</code><br>
-                Terraform address: <code>{{ inst.address }}</code>
+                Instance ID: <code>{{ format_instance_id(inst) }}</code><br>
+                Terraform address: <code>{{ format_address(inst) }}</code>
+            </div>
+        </div>
+
+        {# --- Network topology --- #}
+        <div class="tab-pane fade" id="tab-network">
+            <div class="row g-3 kv-grid mb-4">
+                <div class="col-6 col-md-3"><div class="kv-label">Public IP</div><div class="kv-value"><code data-ip="public">{{ format_public_ip(inst) }}</code></div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">Private IP</div><div class="kv-value"><code data-ip="private">{{ format_private_ip(inst) }}</code></div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">DNS (public)</div><div class="kv-value">{{ format_public_dns(inst) }}</div></div>
+                <div class="col-6 col-md-3"><div class="kv-label">DNS (private)</div><div class="kv-value">{{ format_private_dns(inst) }}</div></div>
+            </div>
+            <div id="topology-host"></div>
+        </div>
+
+        {# --- Security Groups & Firewall Rules (§Task 4) --- #}
+        <div class="tab-pane fade" id="tab-security-groups">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h3 class="h4 mb-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-shield-lock provider-icon provider-{{ inst.provider }}"></i>
+                    Security Groups &amp; Firewall Rules
+                </h3>
+                <span class="badge bg-secondary-subtle text-secondary-emphasis" id="sg-provider-badge">{{ inst.provider_label }}</span>
+            </div>
+            <div id="security-groups-host">
+                <div class="text-faint small">Loading security groups…</div>
             </div>
         </div>
 
         {# --- Feature panels (Files/Processes/Services/Docker) — agent-scoped (§20-23) --- #}
-        <div class="tab-pane fade" id="tab-files"><div class="feature-placeholder"><i class="bi bi-folder2-open"></i><h3 class="h6 mt-2 mb-1">File manager (§20)</h3><p class="small text-faint mb-0">Requires the SkyDash agent on this server. Contract: <code>skydash/features/files.py</code>.</p></div></div>
+        {# --- File manager (dual-pane SFTP browser) --- #}
+        <div class="tab-pane fade" id="tab-files">
+            <div class="fm-dual-pane d-flex gap-3">
+                <div class="fm-sidebar" style="width: 200px;" id="fm-tree">
+                    <div class="small text-faint mb-2"><i class="bi bi-folder2-open me-1"></i> BROWSE</div>
+                </div>
+                <div class="fm-main flex-grow-1 d-flex flex-column">
+                    <div class="fm-toolbar d-flex justify-content-between align-items-center mb-2" id="fm-toolbar">
+                        <nav aria-label="breadcrumb" id="fm-breadcrumb"></nav>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="fm-upload" title="Upload file">
+                                <i class="bi bi-upload"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="fm-disk" id="fm-disk"></div>
+                    <div class="fm-listing flex-grow-1 overflow-auto" id="fm-listing"></div>
+                </div>
+            </div>
+        </div>
         <div class="tab-pane fade" id="tab-processes"><div class="feature-placeholder"><i class="bi bi-cpu"></i><h3 class="h6 mt-2 mb-1">Process management (§21)</h3><p class="small text-faint mb-0">Requires the SkyDash agent on this server. Contract: <code>skydash/features/processes.py</code>.</p></div></div>
         <div class="tab-pane fade" id="tab-services"><div class="feature-placeholder"><i class="bi bi-gear"></i><h3 class="h6 mt-2 mb-1">Service management (§22)</h3><p class="small text-faint mb-0">Requires the SkyDash agent on this server. Contract: <code>skydash/features/services.py</code>.</p></div></div>
         <div class="tab-pane fade" id="tab-docker"><div class="feature-placeholder"><i class="bi bi-box-seam"></i><h3 class="h6 mt-2 mb-1">Docker management (§23)</h3><p class="small text-faint mb-0">Requires the SkyDash agent and Docker CLI on this server. Contract: <code>skydash/features/docker.py</code>.</p></div></div>
@@ -158,7 +185,7 @@
                 <div class="col-12"><button class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Map domain</button></div>
             </form>
             <div id="domain-list"></div>
-            <div class="small text-faint mt-3">Note: domain routing must still be configured in DNS (A/CNAME &rarr; {{ inst.public_ip or 'server IP' }}). This panel records the mapping for reference.</div>
+            <div class="small text-faint mt-3">Note: domain routing must still be configured in DNS (A/CNAME &rarr; {{ format_public_ip(inst) }}). This panel records the mapping for reference.</div>
         </div>
     </div>
     </div>
@@ -176,6 +203,8 @@
 <script src="{{ url_for('static', filename='js/status-timeline.js') }}"></script>
 <script src="{{ url_for('static', filename='js/metrics-charts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/topology.js') }}"></script>
+<script src="{{ url_for('static', filename='js/file-manager.js') }}"></script>
+<script src="{{ url_for('static', filename='js/security-groups.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ssh-terminal.js') }}"></script>
 {{ super() }}
 {% endblock scripts %}

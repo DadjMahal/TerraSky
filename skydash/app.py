@@ -26,6 +26,7 @@ import hermes_agent
 import config_store
 import status_history
 import projects
+import instance_format
 from auth import limiter as auth_limiter
 
 # --- Security & Governance (Iteration 8; §31, §33-37, §67-68, §76-80, §107) ---
@@ -82,6 +83,28 @@ def csrf_token_view():
 @app.context_processor
 def inject_csrf_token():
     return dict(csrf_token=generate_csrf)
+
+# --- Expose instance formatting helpers to all templates (§instance formatting) ---
+@app.context_processor
+def inject_instance_format():
+    return {
+        "format_type": instance_format.format_type,
+        "format_region": instance_format.format_region,
+        "format_os": instance_format.format_os,
+        "format_zone": instance_format.format_zone,
+        "format_disk": instance_format.format_disk,
+        "format_created": instance_format.format_created,
+        "format_status": instance_format.format_status,
+        "format_cpu": instance_format.format_cpu,
+        "format_ram": instance_format.format_ram,
+        "format_display_name": instance_format.format_display_name,
+        "format_instance_id": instance_format.format_instance_id,
+        "format_public_ip": instance_format.format_public_ip,
+        "format_private_ip": instance_format.format_private_ip,
+        "format_public_dns": instance_format.format_public_dns,
+        "format_private_dns": instance_format.format_private_dns,
+        "format_address": instance_format.format_address,
+    }
 
 # --- Deprecation header for legacy /api/ routes (§125) ---
 @app.after_request
@@ -200,6 +223,163 @@ def v1_instance_detail(slug):
     if provider:
         provider.get_instance_details(inst)
     return _envelop(inst.to_dict())
+
+@api_v1.route("/instance/<slug>/security-groups")
+@login_required
+def v1_instance_security_groups(slug: str):
+    """GET /api/v1/instance/<slug>/security-groups — normalized firewall/SG data.
+
+    Delegates to the instance's provider ``get_security_groups`` method.
+    Returns ``[]`` for providers without the ``get_security_groups``
+    capability (graceful degradation) and a 503 when the provider SDK is
+    not available, so the UI can show a consistent error.
+    """
+    inst = get_instance_by_slug(slug)
+    if not inst:
+        return jsonify({"status": "error", "error": "Instance not found", "code": "NOT_FOUND"}), 404
+    provider = get_provider(inst.provider)
+    if not provider:
+        return jsonify({"status": "error", "error": "Unknown provider", "code": "BAD_PROVIDER"}), 400
+    if "get_security_groups" not in provider.get_capabilities():
+        # e.g. custom_ssh — no cloud firewalls to inspect.
+        return _envelop([])
+    if not provider.available():
+        return jsonify(
+            {"status": "error", "error": f"Provider {inst.provider} credentials unavailable",
+             "code": "PROVIDER_UNAVAILABLE"}
+        ), 503
+    try:
+        groups = provider.get_security_groups(inst)
+    except Exception as e:  # noqa: BLE001 — never leak a 500 for a single instance
+        return jsonify(
+            {"status": "error", "error": f"Provider error: {e}", "code": "PROVIDER_ERROR"}
+        ), 502
+        return _envelop(groups)
+
+
+# --- #20 File manager (§20 — SFTP) -------------------------------------------
+def _resolve_ssh_host(inst) -> str | None:
+    """Return the public IP to SSH into for *inst*, or None if unreachable."""
+    return inst.public_ip or inst.private_ip
+
+
+@api_v1.route("/file/ls")
+@login_required
+def v1_file_ls():
+    """GET /api/v1/file/ls?slug=<slug>&path=<path> — list a remote directory."""
+    slug = request.args.get("slug", "")
+    path = request.args.get("path", "/")
+    inst = get_instance_by_slug(slug)
+    if not inst:
+        return jsonify({"status": "error", "error": "Instance not found", "code": "NOT_FOUND"}), 404
+    host = _resolve_ssh_host(inst)
+    if not host:
+        return jsonify({"status": "error", "error": "Instance has no SSH-reachable IP", "code": "NO_IP"}), 400
+    from sftp_client import list_dir
+    result = list_dir(host, path)
+    if not result.get("ok"):
+        return jsonify({"status": "error", "error": result["error"], "code": "SFTP_ERROR"}), 502
+    return _envelop(result["data"])
+
+
+@api_v1.route("/file/read")
+@login_required
+def v1_file_read():
+    """GET /api/v1/file/read?slug=<slug>&path=<path>&limit=<n> — read a remote file."""
+    slug = request.args.get("slug", "")
+    path = request.args.get("path", "")
+    limit = int(request.args.get("limit", 0) or 0)
+    inst = get_instance_by_slug(slug)
+    if not inst:
+        return jsonify({"status": "error", "error": "Instance not found", "code": "NOT_FOUND"}), 404
+    host = _resolve_ssh_host(inst)
+    if not host:
+        return jsonify({"status": "error", "error": "Instance has no SSH-reachable IP", "code": "NO_IP"}), 400
+    from sftp_client import read_file
+    result = read_file(host, path, limit)
+    if not result.get("ok"):
+        return jsonify({"status": "error", "error": result["error"], "code": "SFTP_ERROR"}), 502
+    return _envelop(result["data"])
+
+
+@api_v1.route("/file/write", methods=["POST"])
+@login_required
+def v1_file_write():
+    """POST /api/v1/file/write — write a remote file (json: slug, path, content_b64)."""
+    data = request.get_json(silent=True) or {}
+    slug = data.get("slug", "")
+    path = data.get("path", "")
+    content_b64 = data.get("content_b64", "")
+    inst = get_instance_by_slug(slug)
+    if not inst:
+        return jsonify({"status": "error", "error": "Instance not found", "code": "NOT_FOUND"}), 404
+    host = _resolve_ssh_host(inst)
+    if not host:
+        return jsonify({"status": "error", "error": "Instance has no SSH-reachable IP", "code": "NO_IP"}), 400
+    from sftp_client import write_file
+    result = write_file(host, path, content_b64)
+    if not result.get("ok"):
+        return jsonify({"status": "error", "error": result["error"], "code": "SFTP_ERROR"}), 502
+    return _envelop(result["data"])
+
+
+@api_v1.route("/file/delete", methods=["POST"])
+@login_required
+def v1_file_delete():
+    """POST /api/v1/file/delete — delete a remote file/dir (json: slug, path)."""
+    data = request.get_json(silent=True) or {}
+    slug = data.get("slug", "")
+    path = data.get("path", "")
+    inst = get_instance_by_slug(slug)
+    if not inst:
+        return jsonify({"status": "error", "error": "Instance not found", "code": "NOT_FOUND"}), 404
+    host = _resolve_ssh_host(inst)
+    if not host:
+        return jsonify({"status": "error", "error": "Instance has no SSH-reachable IP", "code": "NO_IP"}), 400
+    from sftp_client import delete_file
+    result = delete_file(host, path)
+    if not result.get("ok"):
+        return jsonify({"status": "error", "error": result["error"], "code": "SFTP_ERROR"}), 502
+    return _envelop(result["data"])
+
+
+@api_v1.route("/file/stat")
+@login_required
+def v1_file_stat():
+    """GET /api/v1/file/stat?slug=<slug>&path=<path> — stat a remote file."""
+    slug = request.args.get("slug", "")
+    path = request.args.get("path", "")
+    inst = get_instance_by_slug(slug)
+    if not inst:
+        return jsonify({"status": "error", "error": "Instance not found", "code": "NOT_FOUND"}), 404
+    host = _resolve_ssh_host(inst)
+    if not host:
+        return jsonify({"status": "error", "error": "Instance has no SSH-reachable IP", "code": "NO_IP"}), 400
+    from sftp_client import stat_file
+    result = stat_file(host, path)
+    if not result.get("ok"):
+        return jsonify({"status": "error", "error": result["error"], "code": "SFTP_ERROR"}), 502
+    return _envelop(result["data"])
+
+
+@api_v1.route("/file/disk")
+@login_required
+def v1_file_disk():
+    """GET /api/v1/file/disk?slug=<slug>&path=<path> — remote disk usage."""
+    slug = request.args.get("slug", "")
+    path = request.args.get("path", "/")
+    inst = get_instance_by_slug(slug)
+    if not inst:
+        return jsonify({"status": "error", "error": "Instance not found", "code": "NOT_FOUND"}), 404
+    host = _resolve_ssh_host(inst)
+    if not host:
+        return jsonify({"status": "error", "error": "Instance has no SSH-reachable IP", "code": "NO_IP"}), 400
+    from sftp_client import get_disk_usage
+    result = get_disk_usage(host, path)
+    if not result.get("ok"):
+        return jsonify({"status": "error", "error": result["error"], "code": "SFTP_ERROR"}), 502
+    return _envelop(result["data"])
+
 
 @api_v1.route("/instances/<slug>/<action>", methods=["POST"])
 @auth_limiter.limit("10 per minute")
@@ -693,12 +873,21 @@ except Exception as e:  # noqa: BLE001
 @app.context_processor
 def inject_settings():
     settings = config_store.get_site_settings()
+    user = get_current_user()
+    user_role = ""
+    try:
+        user_role = rbac.resolve_role(user) if user else ""
+    except Exception:
+        user_role = ""
     return {
         "site_name": settings["site_name"],
         "site_description": settings["site_description"],
         "favicon_url": settings["favicon_url"],
         "logo_url": settings["logo_url"],
-        "current_user": get_current_user(),
+        "current_user": user,
+        "current_user_role": user_role,
+        "current_user_is_admin": (user_role == rbac.ADMIN),
+        "current_instance": None,
     }
 
 # In-process TTL cache for live statuses, to avoid hammering cloud APIs on every

@@ -225,11 +225,13 @@
         const tabTriggers = document.querySelectorAll(".detail-tabs .nav-link[data-bs-toggle]");
         tabTriggers.forEach(t => t.addEventListener("shown.bs.tab", (e) => {
             const id = e.target.getAttribute("href");
-            if (id === "#tab-hardware" && window.SkyDashSpecs) window.SkyDashSpecs.render(SLUG);
+            if (id === "#tab-overview" && window.SkyDashSpecs) window.SkyDashSpecs.render(SLUG);
             if (id === "#tab-metrics" && window.SkyDashMetrics) window.SkyDashMetrics.render(SLUG);
             if (id === "#tab-network" && window.SkyDashTopology) window.SkyDashTopology.render();
             if (id === "#tab-timeline" && window.SkyDashTimeline) window.SkyDashTimeline.render(SLUG);
             if (id === "#tab-ssh" && window.SkyDashSSHTerminal) window.SkyDashSSHTerminal.init(SLUG);
+            if (id === "#tab-files" && window.SkyDashFileManager) window.SkyDashFileManager.init();
+            if (id === "#tab-security-groups" && window.SkyDashSecurityGroups) window.SkyDashSecurityGroups.render(SLUG);
         }));
     });
 

@@ -71,6 +71,7 @@ def build_spec() -> dict[str, Any]:
                 "Instance": {"type": "object", "description": "Instance resource (see models.Instance)."},
                 "StatusList": {"type": "object", "description": "Instance statuses (see /api/statuses)."},
                 "ActionRequest": {"type": "object", "properties": {"action": {"type": "string", "enum": ["start", "stop"]}}, "required": ["action"]},
+                "SecurityGroup": {"type": "object", "description": "Normalized security group / firewall with inbound/outbound rules (providers/security_groups.py)."},
             },
         },
         "security": [{"sessionAuth": []}, {"csrfHeader": []}],
@@ -125,6 +126,19 @@ def _paths(er: Any) -> dict[str, Any]:
                     {"name": "log_type", "in": "path", "required": True, "schema": {"type": "string"}},
                 ],
                 "responses": {"200": ok, "401": er("Unauthorized"), "404": er("NotFound"), "503": er("ProviderUnavailable")},
+            }
+        },
+        "/instance/{slug}/security-groups": {
+            "get": {
+                "tags": ["Instances"],
+                "summary": "Instance security groups / firewall rules (normalized)",
+                "parameters": [slug],
+                "description": "Returns inbound/outbound rules for all security groups "
+                               "attached to the instance, normalized across cloud providers.",
+                "responses": {
+                    "200": ok, "401": er("Unauthorized"), "404": er("NotFound"),
+                    "503": er("ProviderUnavailable"), "502": er("ProviderError"),
+                },
             }
         },
         "/security/checklist": {

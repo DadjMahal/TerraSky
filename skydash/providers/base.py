@@ -139,3 +139,15 @@ class CloudProvider(abc.ABC):
         instance.error = err
         instance.can_manage = self.available()
         return instance
+
+    def get_security_groups(self, instance: Instance) -> list:
+        """Return a list of normalized security group dicts for the instance.
+
+        Each dict carries id, name, type (provider-specific label,
+        e.g. "AWS SecurityGroup"), provider (normalized key) and
+        inbound/outbound rule lists. See providers/security_groups.py
+        for the canonical shape. Concrete providers override this when they
+        can query their cloud API; subclasses that cannot simply omit the
+        capability.
+        """
+        return []

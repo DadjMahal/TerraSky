@@ -124,12 +124,13 @@ This is the list that matters most for "don't break things." Each row is an
 | `#region-map-wrap`, `#region-map`, `#map-error`, `#map-toggle` | `dashboard.js`, `region-map.js` | Update `SkyDashRegionMap.init()` |
 | `#scroll-sentinel`, `#pagination-controls`, `#load-count`, `#show-more`, `.hidden`, `.hidden-by-page` | `dashboard.js` | Both hide classes must exist in CSS — see bug note below |
 | `#toast-stack`, `.skydash-toast`, `.toast-progress`, `.btn-close-toast` | `dashboard.js` (`showToast`), `detail.js` (fallback `showToast`) | Keep both in sync — detail.js's own toast only fires when `dashboard.js` isn't loaded on that page |
-| Tab `href`s: `#tab-overview`, `#tab-hardware`, `#tab-network`, `#tab-actions`, `#tab-timeline`, `#tab-logs`, `#tab-metrics`, `#tab-domains`, `#tab-ssh` | `detail.js` (`location.hash` sync via `shown.bs.tab`) | Changing a hash breaks deep-linking to that tab |
+| Tab `href`s: `#tab-overview` (Overview + Hardware + Actions/Danger zone merged), `#tab-network`, `#tab-security-groups`, `#tab-files`, `#tab-timeline`, `#tab-logs`, `#tab-metrics`, `#tab-domains`, `#tab-ssh` | `detail.js` (renders `#tab-overview` specs + `#tab-files` file manager on `shown.bs.tab`) | The old `#tab-hardware` and `#tab-actions` tabs were merged into `#tab-overview` (Tasks 3 & 5) — no separate panes exist anymore |
 | `#specs-host`, `#topology-host`, `#timeline-host`, `#metrics-host`, `#ssh-host` | `specs-visualization.js`, `topology.js`, `status-timeline.js`, `metrics-charts.js`, `ssh-terminal.js` | These are just mount points — safe to restyle, don't rename |
 | `#action-progress`, `.stage[data-stage]`, `.stage .dot`, `.stage.active`, `.stage.done` | `detail.js` (`showProgress`/`setStage`) | Structural, generated entirely by JS |
 | `.log-viewer`, `.lv-line`, `.lv-error`/`.lv-warning`/`.lv-info` | `detail.js` (`renderLogs`) | |
 | `.domain-row` | `detail.js` | |
 | `window.__SKYDASH_INSTANCES__` (index.html), `window.SKYDASH_SLUG` / `window.SKYDASH_INST` (detail.html) | `dashboard.js`, `region-map.js`, `detail.js` and its sibling modules | Set inline in the template `{% block scripts %}`, before the JS files load |
+| `#fm-tree`, `#fm-breadcrumb`, `#fm-disk`, `#fm-listing`, `#fm-upload`, `.fm-row` | `file-manager.js` (`SkyDashFileManager`) | Mount points + row selector for the SFTP dual-pane file browser (Files tab) |
 
 **Two pre-existing bugs were fixed as part of this pass** (mentioned so
 nobody "fixes" them back by reverting the HTML):
@@ -157,7 +158,14 @@ and API call sites untouched. Only rendering/markup/color changed:
   sync intentionally — if you change one, change both). Its own fallback
   `showToast()` (used because `dashboard.js` isn't loaded on the detail
   page) rebuilt to match. Minor emoji/unicode cleanup in toast text and the
-  domain-delete button.
+  domain-delete button. Tab `shown.bs.tab` handler renders `#tab-overview`
+  (specs gauge), `#tab-network` (topology), `#tab-files` (file manager init),
+    and delegates to `window.SkyDashFileManager.init()`.
+- **`file-manager.js`** — dual-pane SFTP file browser for the Files tab. Lazy-loads on
+  `shown.bs.tab` for `#tab-files`. Communicates with `/api/v1/file/ls`,
+  `/read`, `/write`, `/delete`, `/stat`, `/disk`. Uses the Fetch API (CSRF
+  handled globally by `csrf-header.js`). Exposes `window.SkyDashFileManager`
+  with `init`, `navigate`, `showToast`.
 - **`specs-visualization.js`** — gauge stroke colors switched from hardcoded
   hex to `var(--accent)` / `var(--metric-alt)` / `var(--metric-alt-2)`,
   passed via inline `style="stroke:…"` (SVG presentation *attributes* don't
@@ -196,7 +204,7 @@ and API call sites untouched. Only rendering/markup/color changed:
    `base.html`). Never add an emoji character to a template or a JS
    template-string. If you're unsure an icon exists, check
    https://icons.getbootstrap.com rather than guessing a class name.
-4. **New page?** Extend `base.html`, not a fresh `<html>` doc — unless it's
+4. **New page?** Extend `base.html`, not a fresh `<html>` document — unless it's
    genuinely pre-auth like `login.html`, in which case link `tokens.css` and
    write a small page-specific stylesheet the way `login.css` does, and keep
    its hardcoded values in sync with `tokens.css` by hand (it can't inherit
@@ -207,9 +215,19 @@ and API call sites untouched. Only rendering/markup/color changed:
    resolution is required for Canvas, direct hex is only acceptable for
    things that must look identical in both themes on purpose (e.g. the SSH
    terminal, which stays dark regardless of site theme by design).
-6. **Before you ship a template change**, check Section 5. If you touched
+6. **New instance field?** Add a `format_*` function in `instance_format.py`
+   (all display values should flow through these — never raw `inst.field or '—'`
+   in a template). Register it in the `inject_instance_format` context processor
+   in `app.py`. If the field needs hardware back-fill (CPU/RAM), extend
+   `_enrich_hardware` and `instance_specs.py`.
+7. **Before you ship a template change**, check Section 5. If you touched
    anything in that table, grep the corresponding JS file for the old string
    to make sure nothing still references it.
+8. **New sidebar entry?** Add a `<li class="nav-item">` in the sidebar nav
+   in `base.html`. Use `sidebar-group-label` for section headers. The sidebar
+   auto-highlights the active link via `request.path` comparison. For
+   detail-page tabs, link to `#tab-<name>`. For admin-only entries, wrap in
+   `{% if current_user_is_admin %}`.
 
 ## 8. What is NOT verified (owed to whoever deploys this)
 
@@ -221,11 +239,11 @@ data were available in that environment). Before calling this "done" in
 claim":
 - Deploy to staging or the live host and load `/`, `/instance/<slug>`,
   `/admin`, `/login` in an actual browser.
-- Click-test: filters, search, sort, tag dropdown, drag-to-reorder, region
+- Click-test: sidebar toggle + persistence across reload, filters, search, sort, tag dropdown, drag-to-reorder, region
   map toggle, right-click context menu, start/stop actions, all detail-page
   tabs (especially the Hermes SSH tab, which depends on Flask-SocketIO being
-  enabled), theme toggle persistence across reload.
-- Confirm `/static/css/tokens.css`, `base.css`, `login.css` are actually
+  enabled), theme toggle persistence across reload, sidebar navigation links.
+- Confirm `/static/css/tokens.css`, `base.css`, `login.css` and `/static/js/menu.js` are actually
   served (they're new files — nginx/static config doesn't need changes
   since Flask serves everything under `skydash/static/` already, but this
   wasn't confirmed against the real deployment).

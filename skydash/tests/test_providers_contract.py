@@ -38,6 +38,51 @@ def test_start_stop_capabilities_line_up():
         assert "stop" not in caps or "start" in caps, f"{p.key}: 'stop' without 'start' is inconsistent"
 
 
+def test_security_groups_capability_contract():
+    """get_security_groups must be declared as a capability by cloud providers
+    that support it, and the method must always be callable without raising
+    when the provider is unavailable (credential-less)."""
+    # Providers that SHOULD support security groups (real cloud firewalls).
+    sg_providers = {"aws", "azure", "oracle", "alibaba", "digitalocean"}
+    for p in all_providers():
+        if p.key in sg_providers:
+            assert "get_security_groups" in p.get_capabilities(), (
+                f"{p.key} must declare 'get_security_groups' capability"
+            )
+        assert callable(getattr(p, "get_security_groups", None)), (
+            f"{p.key} missing get_security_groups method"
+        )
+
+
+def test_get_security_groups_never_raises_without_credentials():
+    """Even with no credentials, calling get_security_groups must not crash —
+    it should return a list (possibly empty) and only set instance.error."""
+    from models import Instance
+    fake = Instance(slug="test", name="test", provider="aws", instance_id="i-missing")
+    for p in all_providers():
+        # Must not raise; result must be a list.
+        result = p.get_security_groups(fake)
+        assert isinstance(result, list), f"{p.key} returned non-list: {result!r}"
+
+
+def _run():
+    tests = [
+        test_all_providers_are_cloudprovider_and_declare_capabilities,
+        test_provider_interface_and_availability_never_raises,
+        test_start_stop_capabilities_line_up,
+        test_security_groups_capability_contract,
+        test_get_security_groups_never_raises_without_credentials,
+    ]
+    failures = 0
+    for fn in tests:
+        try:
+            fn()
+            print(f"PASS  {fn.__name__}")
+        except Exception as exc:  # noqa: BLE001
+            failures += 1
+            print(f"FAIL  {fn.__name__}: {exc}")
+
+
 if __name__ == "__main__":
     failures = 0
     for name, fn in sorted(globals().items()):

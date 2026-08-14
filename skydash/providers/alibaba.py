@@ -29,7 +29,7 @@ _ALI_STATE_MAP = {
 
 class AlibabaProvider(CloudProvider):
     key = "alibaba"
-    capabilities = ("read", "start", "stop", "get_logs")
+    capabilities = ("read", "start", "stop", "reboot", "get_logs", "get_security_groups")
     _cached_client = None
     _client_lock = None
 
@@ -113,3 +113,63 @@ class AlibabaProvider(CloudProvider):
             return True, f"Stop request sent to {instance.name}"
         except Exception as e:
             return False, f"Alibaba stop error: {e}"
+
+    def get_security_groups(self, instance: Instance) -> list:
+        """Return Alibaba Cloud Security Groups attached to the instance.
+
+        Uses ``DescribeSecurityGroups`` to list SGs applied to the instance, then
+        ``DescribeSecurityGroupRules`` to fetch each group's ingress/egress
+        permissions.
+        """
+        from providers.security_groups import make_group, make_rule
+
+        if not self.available():
+            return []
+        try:
+            from alibabacloud_ecs20140526 import models as ecs_models
+        except ImportError:
+            return []
+        client = self._client()
+        sg_ids: list = list(instance.security_groups or [])
+        groups: list = []
+        try:
+            resp = client.describe_security_groups(
+                ecs_models.DescribeSecurityGroupsRequest(instance_id=instance.instance_id)
+            )
+            sgs = resp.body.security_groups.security_group if (resp.body and resp.body.security_groups) else []
+            for sg in sgs:
+                sid = sg.security_group_id
+                if sid and sid not in sg_ids:
+                    sg_ids.append(sid)
+        except Exception as e:
+            instance.error = "Alibaba DescribeSecurityGroups error: " + str(e)
+
+        for sid in sg_ids:
+            inbound, outbound = [], []
+            try:
+                # Ingress rules (direction defaults to ingress in this API)
+                resp = client.describe_security_group_rules(
+                    ecs_models.DescribeSecurityGroupRulesRequest(security_group_id=sid)
+                )
+                rules = resp.body.permissions.permission if (resp.body and resp.body.permissions) else []
+            except Exception as e:
+                instance.error = "Alibaba DescribeSecurityGroupRules error: " + str(e)
+                rules = []
+            for r in rules:
+                proto = getattr(r, "ip_protocol", "all") or "all"
+                pf = getattr(r, "start_port", None)
+                pt = getattr(r, "end_port", None)
+                policy = (getattr(r, "policy", "Accept") or "Accept").lower()
+                action = "allow" if policy == "accept" else "deny"
+                desc = getattr(r, "description", "") or ""
+                direction = getattr(r, "direction", "ingress")
+                src = getattr(r, "source_cidr_ip", None) or getattr(r, "source_security_group_id", None) or "0.0.0.0/0"
+                if str(direction).lower() in ("ingress", "in"):
+                    inbound.append(make_rule(proto, pf, pt, src, "inbound", action, desc))
+                else:
+                    dest = getattr(r, "dest_cidr_ip", None) or getattr(r, "dest_security_group_id", None) or "0.0.0.0/0"
+                    outbound.append(make_rule(proto, pf, pt, dest, "outbound", action, desc))
+            groups.append(make_group(
+                sid, sid, "Alibaba SecurityGroup", self.key, inbound, outbound,
+            ))
+        return groups

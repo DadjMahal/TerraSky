@@ -89,8 +89,9 @@ def _map_aws(attrs: dict) -> dict:
         creation_date="",
         tags=attrs.get("tags") or {},
         instance_id=attrs.get("id", ""),
+        security_groups=attrs.get("vpc_security_group_ids") or [],
         extra={},
-    )
+        )
 
 
 def _azure_os(attrs: dict) -> str:
@@ -134,6 +135,7 @@ def _map_azure(attrs: dict) -> dict:
             "resource_group_name": attrs.get("resource_group_name", ""),
             "vm_name": attrs.get("name", ""),
         },
+        security_groups=[],
     )
 
 
@@ -201,6 +203,7 @@ def _map_alibaba(attrs: dict) -> dict:
         creation_date=attrs.get("create_time", ""),
         tags=attrs.get("tags") or {},
         instance_id=attrs.get("id", ""),
+        security_groups=list(attrs.get("security_groups") or []),
         extra={},
     )
 
@@ -233,6 +236,7 @@ def _map_digitalocean(attrs: dict) -> dict:
         creation_date=attrs.get("created_at", ""),
         tags=tags or {},
         instance_id=str(attrs.get("id", "")) if attrs.get("id") else "",
+        security_groups=[],
         extra={},
     )
 
@@ -280,6 +284,7 @@ def _build(res: dict) -> Instance | None:
         disk_size=mapped["disk_size"],
         creation_date=mapped["creation_date"],
         tags=mapped["tags"],
+        security_groups=mapped.get("security_groups", []),
         extra=mapped["extra"],
     )
 

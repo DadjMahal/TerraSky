@@ -75,12 +75,12 @@
                     {% for inst in instances %}
                     <tr>
                         <td>
-                            <strong>{{ inst.name }}</strong><br>
-                            <small class="text-faint">{{ inst.address }}</small>
+                            <strong>{{ format_display_name(inst) }}</strong><br>
+                            <small class="text-faint">{{ format_address(inst) }}</small>
                         </td>
                         <td>
                             <i class="bi {{ inst.icon }} provider-icon"></i>
-                            {{ inst.provider }}
+                            {{ inst.provider_label if inst.provider_label else inst.provider }}
                         </td>
                         <td>
                             {% if inst.status == 'running' %}
@@ -88,15 +88,15 @@
                             {% elif inst.status == 'stopped' %}
                                 <span class="status-pill status-stopped"><span class="beacon-dot"></span>Stopped</span>
                             {% else %}
-                                <span class="status-pill status-unknown"><span class="beacon-dot"></span>{{ inst.status }}</span>
+                                <span class="status-pill status-unknown"><span class="beacon-dot"></span>{{ format_status(inst) }}</span>
                             {% endif %}
                         </td>
-                        <td><code>{{ inst.type }}</code></td>
-                        <td>{{ inst.region }}</td>
+                        <td><code>{{ format_type(inst) }}</code></td>
+                        <td>{{ format_region(inst) }}</td>
                         <td>
-                            {% if inst.public_ip != 'N/A' %}
-                                <code>{{ inst.public_ip }}</code>
-                                <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{ inst.public_ip }}')" title="Copy IP">
+                            {% if format_public_ip(inst) != "N/A" %}
+                                <code>{{ format_public_ip(inst) }}</code>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{ format_public_ip(inst) }}')" title="Copy IP">
                                     <i class="bi bi-clipboard"></i>
                                 </button>
                             {% else %}
@@ -105,10 +105,10 @@
                         </td>
                         <td>
                             {% if inst.can_manage %}
-                                <a href="/action/{{ inst.address }}/start" class="btn btn-sm btn-success btn-action" title="Start">
+                                <a href="/action/{{ format_address(inst) }}/start" class="btn btn-sm btn-success btn-action" title="Start">
                                     <i class="bi bi-play-fill"></i> Start
                                 </a>
-                                <a href="/action/{{ inst.address }}/stop" class="btn btn-sm btn-danger btn-action" title="Stop">
+                                <a href="/action/{{ format_address(inst) }}/stop" class="btn btn-sm btn-danger btn-action" title="Stop">
                                     <i class="bi bi-stop-fill"></i> Stop
                                 </a>
                             {% else %}

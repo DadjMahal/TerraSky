@@ -92,22 +92,22 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-2 kv-grid">
-                        <div class="col-6"><div class="kv-label">Type</div><div class="kv-value">{{ i.instance_type or '—' }}</div></div>
-                        <div class="col-6"><div class="kv-label">Region</div><div class="kv-value">{{ i.region or '—' }}</div></div>
-                        <div class="col-6"><div class="kv-label">Zone</div><div class="kv-value">{{ i.availability_zone or '—' }}</div></div>
-                        <div class="col-6"><div class="kv-label">OS</div><div class="kv-value">{{ i.os or '—' }}</div></div>
-                        <div class="col-6"><div class="kv-label">Public IP</div><div class="kv-value"><code data-ip="public">{{ i.public_ip or '—' }}</code></div></div>
-                        <div class="col-6"><div class="kv-label">Private IP</div><div class="kv-value"><code data-ip="private">{{ i.private_ip or '—' }}</code></div></div>
-                        <div class="col-12"><div class="kv-label">Disk</div><div class="kv-value">{{ i.disk_size or '—' }}</div></div>
-                        <div class="col-12"><div class="kv-label">Created</div><div class="kv-value">{{ i.creation_date or '—' }}</div></div>
+                        <div class="col-6"><div class="kv-label">Type</div><div class="kv-value">{{ format_type(i) }}</div></div>
+                        <div class="col-6"><div class="kv-label">Region</div><div class="kv-value">{{ format_region(i) }}</div></div>
+                        <div class="col-6"><div class="kv-label">Zone</div><div class="kv-value">{{ format_zone(i) }}</div></div>
+                        <div class="col-6"><div class="kv-label">OS</div><div class="kv-value">{{ format_os(i) }}</div></div>
+                        <div class="col-6"><div class="kv-label">Public IP</div><div class="kv-value"><code data-ip="public">{{ format_public_ip(i) }}</code></div></div>
+                        <div class="col-6"><div class="kv-label">Private IP</div><div class="kv-value"><code data-ip="private">{{ format_private_ip(i) }}</code></div></div>
+                        <div class="col-12"><div class="kv-label">Disk</div><div class="kv-value">{{ format_disk(i) }}</div></div>
+                        <div class="col-12"><div class="kv-label">Created</div><div class="kv-value">{{ format_created(i) }}</div></div>
                     </div>
                     <div class="mt-3">
                         <div class="metric-bar">
-                            <div class="metric-label"><span>CPU</span><span data-bar-label="cpu">{{ i.cpu or '—' }}</span></div>
+                            <div class="metric-label"><span>CPU</span><span data-bar-label="cpu">{{ format_cpu(i) }}</span></div>
                             <div class="progress"><div class="progress-bar metric-cpu" data-bar="cpu" style="width:0%"></div></div>
                         </div>
                         <div class="metric-bar">
-                            <div class="metric-label"><span>RAM</span><span data-bar-label="ram">{{ i.ram or '—' }}</span></div>
+                            <div class="metric-label"><span>RAM</span><span data-bar-label="ram">{{ format_ram(i) }}</span></div>
                             <div class="progress"><div class="progress-bar metric-ram" data-bar="ram" style="width:0%"></div></div>
                         </div>
                     </div>

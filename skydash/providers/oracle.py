@@ -32,7 +32,7 @@ _OCI_STATE_MAP = {
 
 class OracleProvider(CloudProvider):
     key = "oracle"
-    capabilities = ("read", "start", "stop", "reboot", "get_logs", "get_instance_details")
+    capabilities = ("read", "start", "stop", "reboot", "get_logs", "get_instance_details", "get_security_groups")
     _cached_client = None
     _cached_network_client = None
     _cached_config = None
@@ -166,3 +166,90 @@ class OracleProvider(CloudProvider):
             return True, f"Stop request sent to {instance.name}"
         except Exception as e:
             return False, f"Oracle stop error: {e}"
+
+    def get_security_groups(self, instance: Instance) -> list:
+        """Return OCI Security Lists and NSGs attached to the instance.
+
+        OCI applies security at the subnet layer (Security Lists) and/or per-VNIC
+        via Network Security Groups (NSGs). We list this instance's VNICs, then
+        fetch each VNIC's NSGs and the subnet's Security List.
+        """
+        from providers.security_groups import make_group, make_rule
+
+        if not self.available():
+            return []
+        try:
+            import oci
+        except ImportError:
+            return []
+        compute = self._client()
+        net = self._network_client()
+        compartment_id = instance.extra.get("compartment_id") or self._config()["tenancy"]
+        subnet_id = None
+        nsg_ids: list = []
+        security_list_id = None
+        try:
+            attachments = compute.list_vnic_attachments(
+                compartment_id=compartment_id,
+                instance_id=instance.instance_id,
+            ).data
+            for att in attachments:
+                if not getattr(att, "vnic_id", None):
+                    continue
+                vnic = net.get_vnic(att.vnic_id).data
+                if getattr(vnic, "subnet_id", None) and not subnet_id:
+                    subnet_id = vnic.subnet_id
+                if getattr(vnic, "nsg_id", None) and vnic.nsg_id not in nsg_ids:
+                    nsg_ids.append(vnic.nsg_id)
+        except Exception as e:
+            instance.error = "Oracle VNIC/NSG discovery error: " + str(e)
+        if subnet_id and not security_list_id:
+            try:
+                subnet = net.get_subnet(subnet_id).data
+                security_list_id = getattr(subnet, "security_list_id", None)
+            except Exception as e:
+                instance.error = "Oracle subnet lookup error: " + str(e)
+
+        groups: list = []
+        proto_map = {"ALL": "all", "TCP": "tcp", "UDP": "udp", "ICMP": "icmp"}
+
+        def _parse_rule(rule, direction):
+            proto = proto_map.get((getattr(rule, "protocol", "") or "").upper(),
+                                  (getattr(rule, "protocol", "") or "all").lower())
+            pf = getattr(rule, "source_port_range_min", None)
+            pt = getattr(rule, "source_port_range_max", None)
+            src = getattr(rule, "source", None) or "0.0.0.0/0"
+            action = "allow"
+            desc = getattr(rule, "description", "") or ""
+            return make_rule(proto, pf, pt, str(src), direction, action, desc)
+
+        if security_list_id:
+            try:
+                sl = net.get_security_list(security_list_id).data
+                inbound, outbound = [], []
+                for r in getattr(sl, "ingress_security_rules", []) or []:
+                    inbound.append(_parse_rule(r, "inbound"))
+                for r in getattr(sl, "egress_security_rules", []) or []:
+                    outbound.append(_parse_rule(r, "outbound"))
+                groups.append(make_group(
+                    getattr(sl, "id", ""), getattr(sl, "display_name", ""),
+                    "OCI SecurityList", self.key, inbound, outbound,
+                ))
+            except Exception as e:
+                instance.error = "Oracle get_security_list error: " + str(e)
+
+        for nsg_id in nsg_ids:
+            try:
+                nsg = net.get_network_security_group(nsg_id).data
+                inbound, outbound = [], []
+                for r in getattr(nsg, "ingress_security_rules", []) or []:
+                    inbound.append(_parse_rule(r, "inbound"))
+                for r in getattr(nsg, "egress_security_rules", []) or []:
+                    outbound.append(_parse_rule(r, "outbound"))
+                groups.append(make_group(
+                    getattr(nsg, "id", ""), getattr(nsg, "display_name", ""),
+                    "OCI NSG", self.key, inbound, outbound,
+                ))
+            except Exception as e:
+                instance.error = "Oracle get_nsg error: " + str(e)
+        return groups

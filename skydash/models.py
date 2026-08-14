@@ -65,7 +65,7 @@ class Instance:
     instance_id: str = ""        # provider-native instance identifier
     address: str = ""            # Terraform resource address (type.name)
 
-    # Static inventory metadata (read from terraform.tfstate)
+        # Static inventory metadata (read from terraform.tfstate)
     region: str = ""
     availability_zone: str = ""
     instance_type: str = ""
@@ -79,6 +79,11 @@ class Instance:
     disk_size: str = ""
     creation_date: str = ""
     tags: dict = field(default_factory=dict)
+
+    # Security group / firewall IDs (or names) attached to the instance,
+    # sourced from Terraform state. Used by providers.get_security_groups()
+    # as the lookup hint for fetching live inbound/outbound rules (§Task 4).
+    security_groups: list = field(default_factory=list)
 
     # Runtime state (filled live by provider implementations)
     status: str = STATUS_UNKNOWN
