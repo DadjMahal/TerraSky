@@ -1383,7 +1383,7 @@ def admin_import():
     )
     return redirect(url_for("admin_panel"))
 
-@app.route("/admin")
+@app.route("/admin", endpoint="admin")
 @require_role(rbac.ADMIN)
 @login_required
 def admin_panel():
