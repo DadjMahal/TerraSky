@@ -220,6 +220,9 @@
     document.addEventListener("DOMContentLoaded", () => {
         refreshStatus();
         loadDomains();
+        // Overview is the default active tab — shown.bs.tab won't fire on load,
+        // so render the hardware specs chart proactively.
+        if (window.SkyDashSpecs) window.SkyDashSpecs.render(SLUG);
         const logTab = document.querySelector('a[href="#tab-logs"]');
         if (logTab) logTab.addEventListener("shown.bs.tab", () => refreshLogs());
         const tabTriggers = document.querySelectorAll(".detail-tabs .nav-link[data-bs-toggle]");
@@ -227,11 +230,13 @@
             const id = e.target.getAttribute("href");
             if (id === "#tab-overview" && window.SkyDashSpecs) window.SkyDashSpecs.render(SLUG);
             if (id === "#tab-metrics" && window.SkyDashMetrics) window.SkyDashMetrics.render(SLUG);
-            if (id === "#tab-network" && window.SkyDashTopology) window.SkyDashTopology.render();
+            if (id === "#tab-network") {
+                if (window.SkyDashTopology) window.SkyDashTopology.render();
+                if (window.SkyDashSecurityGroups) window.SkyDashSecurityGroups.render(SLUG);
+            }
             if (id === "#tab-timeline" && window.SkyDashTimeline) window.SkyDashTimeline.render(SLUG);
             if (id === "#tab-ssh" && window.SkyDashSSHTerminal) window.SkyDashSSHTerminal.init(SLUG);
             if (id === "#tab-files" && window.SkyDashFileManager) window.SkyDashFileManager.init();
-            if (id === "#tab-security-groups" && window.SkyDashSecurityGroups) window.SkyDashSecurityGroups.render(SLUG);
         }));
     });
 

@@ -159,11 +159,6 @@
                     <i class="bi bi-box-seam"></i> <span>Docker</span>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link d-flex align-items-center gap-2" href="{{ url_for('detail', slug=current_instance.slug) }}#tab-security-groups">
-                    <i class="bi bi-shield-lock"></i> <span>Security Groups</span>
-                </a>
-            </li>
             {% else %}
             <li class="nav-item"><a class="nav-link d-flex align-items-center gap-2" href="#tab-network"><i class="bi bi-diagram-3"></i> <span>Network</span></a></li>
             <li class="nav-item"><a class="nav-link d-flex align-items-center gap-2" href="#tab-domains"><i class="bi bi-link-45deg"></i> <span>Domain Manager</span></a></li>
@@ -171,7 +166,6 @@
             <li class="nav-item"><a class="nav-link d-flex align-items-center gap-2" href="#tab-processes"><i class="bi bi-cpu"></i> <span>Processes</span></a></li>
             <li class="nav-item"><a class="nav-link d-flex align-items-center gap-2" href="#tab-services"><i class="bi bi-gear-sm"></i> <span>Services</span></a></li>
             <li class="nav-item"><a class="nav-link d-flex align-items-center gap-2" href="#tab-docker"><i class="bi bi-box-seam"></i> <span>Docker</span></a></li>
-            <li class="nav-item"><a class="nav-link d-flex align-items-center gap-2" href="#tab-security-groups"><i class="bi bi-shield-lock"></i> <span>Security Groups</span></a></li>
             {% endif %}
 
             <li class="sidebar-group-label">Platform</li>

@@ -154,7 +154,9 @@
     // Re-fetch when the user opens the Network tab (Bootstrap pill shown event).
     document.addEventListener("shown.bs.tab", function (e) {
         var target = e.target;
-        if (target && target.getAttribute && target.getAttribute("data-bs-target") === "#tab-network") {
+        if (target && target.getAttribute &&
+            (target.getAttribute("data-bs-target") === "#tab-network" ||
+             target.getAttribute("href") === "#tab-network")) {
             fetchSecurityGroups();
         }
     });

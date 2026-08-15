@@ -34,7 +34,6 @@
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-logs"><i class="bi bi-journal-text"></i> Logs</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-metrics"><i class="bi bi-graph-up"></i> Metrics</a></li>
         <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-domains"><i class="bi bi-link-45deg"></i> Domains</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-security-groups"><i class="bi bi-shield-lock"></i> Security Groups</a></li>
         {% if "hermes" in inst.slug %}<li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tab-ssh"><i class="bi bi-terminal"></i> SSH</a></li>{% endif %}
     </ul>
     <div class="tab-content">
@@ -83,7 +82,7 @@
             </div>
         </div>
 
-        {# --- Network topology --- #}
+        {# --- Network tab: IP/DNS + topology + Security Groups (merged §Task 4) --- #}
         <div class="tab-pane fade" id="tab-network">
             <div class="row g-3 kv-grid mb-4">
                 <div class="col-6 col-md-3"><div class="kv-label">Public IP</div><div class="kv-value"><code data-ip="public">{{ format_public_ip(inst) }}</code></div></div>
@@ -92,11 +91,9 @@
                 <div class="col-6 col-md-3"><div class="kv-label">DNS (private)</div><div class="kv-value">{{ format_private_dns(inst) }}</div></div>
             </div>
             <div id="topology-host"></div>
-        </div>
 
-        {# --- Security Groups & Firewall Rules (§Task 4) --- #}
-        <div class="tab-pane fade" id="tab-security-groups">
-            <div class="d-flex align-items-center justify-content-between mb-3">
+            {# --- Security Groups & Firewall Rules (merged into Network tab) --- #}
+            <div class="d-flex align-items-center justify-content-between mb-3 mt-4">
                 <h3 class="h4 mb-0 d-flex align-items-center gap-2">
                     <i class="bi bi-shield-lock provider-icon provider-{{ inst.provider }}"></i>
                     Security Groups &amp; Firewall Rules
