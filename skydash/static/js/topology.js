@@ -30,7 +30,7 @@
           <text class="node-label node-label-ip" x="490" y="55" text-anchor="middle">${priv}</text>
           <text class="node-label node-label-ip" x="490" y="155" text-anchor="middle">${pdns}</text>
         </svg>
-        <div class="small text-faint mt-2">Security groups: <em>future (Category 9)</em></div>`;
+        <div class="small text-faint mt-2">Security groups rendered below.</div>`;
     }
     window.SkyDashTopology = { render };
 })();

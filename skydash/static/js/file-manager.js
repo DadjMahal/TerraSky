@@ -348,11 +348,10 @@
         }
     });
 
-    document.addEventListener("shown.bs.tab", function (e) {
-        if (!e.target || !window.__fm_loaded) return;
+        document.addEventListener("shown.bs.tab", function (e) {
+        if (!e.target) return;
         const href = e.target.getAttribute("href");
         if (href === "#tab-files" && _initialized) {
-            window.__fm_loaded = true;
             init();
         }
     });

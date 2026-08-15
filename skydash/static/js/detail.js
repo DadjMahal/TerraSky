@@ -232,7 +232,7 @@
             if (id === "#tab-metrics" && window.SkyDashMetrics) window.SkyDashMetrics.render(SLUG);
             if (id === "#tab-network") {
                 if (window.SkyDashTopology) window.SkyDashTopology.render();
-                if (window.SkyDashSecurityGroups) window.SkyDashSecurityGroups.render(SLUG);
+                if (window.SkyDashSecurityGroups) window.SkyDashSecurityGroups.fetch();
             }
             if (id === "#tab-timeline" && window.SkyDashTimeline) window.SkyDashTimeline.render(SLUG);
             if (id === "#tab-ssh" && window.SkyDashSSHTerminal) window.SkyDashSSHTerminal.init(SLUG);
