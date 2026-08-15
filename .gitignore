@@ -21,6 +21,9 @@
 !STATUS.md
 !docs/
 !docs/**
+!package.json
+!package-lock.json
+!skydash/requirements.txt
 
 # ============================================================
 # Re-ignore sensitive/junk INSIDE whitelisted dirs
