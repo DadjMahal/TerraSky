@@ -24,6 +24,8 @@
 !package.json
 !package-lock.json
 !skydash/requirements.txt
+!tests/
+!tests/**
 
 # ============================================================
 # Re-ignore sensitive/junk INSIDE whitelisted dirs
