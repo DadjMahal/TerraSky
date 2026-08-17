@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import base64
 import os
+import stat as stat_module
 import sys
 from unittest import mock
 
@@ -109,196 +110,255 @@ def test_load_pkey_both_fail_raises_valueerror(tmp_path):
             sftp_client._load_pkey(str(key_file))
 
 # --------------------------------------------------------------------------- #
-# SFTPClient — connect / close                                                 #
+# connect()                                                                   #
 # --------------------------------------------------------------------------- #
 @pytest.fixture
-def mock_sftp_class():
-    """Patch the module-level SSHClient / paramiko references."""
+def mock_connection():
+    """Patch paramiko.SSHClient and sftp_client._load_pkey so connect() is hermetic.
+
+    Returns (mock_ssh_cls, mock_ssh, mock_sftp).
+    """
     with mock.patch("paramiko.SSHClient") as mock_ssh_cls, \
          mock.patch.object(sftp_client, "_load_pkey", return_value=mock.Mock()) as mock_pkey:
         mock_ssh = mock_ssh_cls.return_value
-        # Make context manager return self
-        mock_ssh.__enter__ = mock.Mock(return_value=mock_ssh)
-        mock_ssh.__exit__ = mock.Mock(return_value=False)
-        yield mock_ssh_cls, mock_ssh
+        mock_sftp = mock_ssh.open_sftp.return_value
+        yield mock_ssh_cls, mock_ssh, mock_sftp
 
 
-def test_sftp_connect_success(mock_sftp_class):
-    mock_ssh_cls, mock_ssh = mock_sftp_class
-    client = sftp_client.SFTPClient("10.0.0.1")
-    client.connect()
+def test_connect_success(mock_connection):
+    mock_ssh_cls, mock_ssh, mock_sftp = mock_connection
+    client, sftp = sftp_client.connect("10.0.0.1")
     mock_ssh.set_missing_host_key_policy.assert_called_once()
-    mock_ssh.connect.assert_called_once()
-    # Verify connect kwargs
     _, kwargs = mock_ssh.connect.call_args
     assert kwargs["hostname"] == "10.0.0.1"
-    # _load_pkey was called (returns mock key)
-    assert mock_ssh.connect.call_args[1]["pkey"] is not None
+    assert kwargs["username"] == sftp_client.DEFAULT_SSH_USER
+    assert kwargs["pkey"] is not None
+    assert kwargs["timeout"] == 10
+    assert kwargs["look_for_keys"] is False
+    assert client is mock_ssh
+    assert sftp is mock_sftp
 
 
-def test_sftp_close_calls_disconnect(mock_sftp_class):
-    _, mock_ssh = mock_sftp_class
-    client = sftp_client.SFTPClient("10.0.0.1")
-    client.connect()
-    client.close()
-    mock_ssh.close.assert_called_once()
+def test_connect_uses_explicit_key_and_user(mock_connection, monkeypatch):
+    _, mock_ssh, _ = mock_connection
+    sftp_client.connect("10.0.0.1", key_path="/keys/custom", username="ops")
+    _, kwargs = mock_ssh.connect.call_args
+    assert kwargs["username"] == "ops"
+    sftp_client._load_pkey.assert_called_once_with("/keys/custom")
 
 
-def test_sftp_context_manager_closes_on_exit(mock_sftp_class):
-    mock_ssh_cls, mock_ssh = mock_sftp_class
-    with sftp_client.SFTPClient("10.0.0.1") as client:
-        assert client._ssh is mock_ssh
-    mock_ssh.close.assert_called_once()
-
-
-# --------------------------------------------------------------------------- #
-# SFTPClient — file operations                                                 #
-# --------------------------------------------------------------------------- #
-@pytest.fixture
-def connected_client(mock_sftp_class):
-    _, mock_ssh = mock_sftp_class
-    client = sftp_client.SFTPClient("10.0.0.1")
-    client.connect()
-    mock_sftp = mock_ssh.open_sftp.return_value
-    client._sftp = mock_sftp
-    return client
-
-
-def test_sftp_mkdir_p_calls_makedirs(connected_client):
-    connected_client._sftp.mkdir = mock.Mock()
-    connected_client.mkdir_p("/remote/path/to/dir")
-    connected_client._sftp.mkdir.assert_called()
-
-
-def test_sftp_mkdir_p_existing_dir(connected_client):
-    """If mkdir raises (dir exists), mkdir_p should not propagate the error."""
-    import paramiko as real_paramiko
-    connected_client._sftp.mkdir = mock.Mock(
-        side_effect=real_paramiko.sftp.SFTPError("exists"))
-    # Should not raise
-    connected_client.mkdir_p("/exists")
-
-
-def test_sftp_read_file(connected_client):
-    mock_sftp = connected_client._sftp
-    mock_file = mock.Mock()
-    mock_file.read.return_value = b"file contents"
-    mock_sftp.file.return_value.__enter__ = mock.Mock(return_value=mock_file)
-    mock_sftp.file.return_value.__exit__ = mock.Mock(return_value=False)
-    result = connected_client.read_file("/remote/file.txt")
-    assert result == b"file contents"
-    mock_file.read.assert_called_once()
-
-
-def test_sftp_read_file_missing(connected_client):
-    import paramiko as real_paramiko
-    mock_sftp = connected_client._sftp
-    mock_sftp.file.side_effect = real_paramiko.sftp.SFTPError("no such file")
+def test_connect_raises_when_key_missing(mock_connection):
+    sftp_client._load_pkey.side_effect = FileNotFoundError("SSH key not found")
     with pytest.raises(FileNotFoundError):
-        connected_client.read_file("/missing.txt")
+        sftp_client.connect("10.0.0.1")
 
 
-def test_sftp_write_file(connected_client):
-    mock_sftp = connected_client._sftp
-    mock_file = mock.Mock()
-    mock_sftp.file.return_value.__enter__ = mock.Mock(return_value=mock_file)
-    mock_sftp.file.return_value.__exit__ = mock.Mock(return_value=False)
-    connected_client.write_file("/remote/file.txt", b"data")
-    mock_file.write.assert_called_once_with(b"data")
+# --------------------------------------------------------------------------- #
+# Small helpers                                                               #
+# --------------------------------------------------------------------------- #
+def test_join():
+    assert sftp_client._join("/base", "a", "b") == "/base/a/b"
+    assert sftp_client._join("/base/", "/a//", "b") == "/base/a/b"
+    assert sftp_client._join("", "a", "b") == "/a/b"
 
 
-def test_sftp_write_file_with_mkdir(connected_client):
-    """write_file with make_dirs=True calls mkdir_p."""
-    mock_sftp = connected_client._sftp
-    mock_file = mock.Mock()
-    mock_sftp.file.return_value.__enter__ = mock.Mock(return_value=mock_file)
-    mock_sftp.file.return_value.__exit__ = mock.Mock(return_value=False)
-    connected_client.mkdir_p = mock.Mock()
-    connected_client.write_file("/remote/dir/file.txt", b"data", make_dirs=True)
-    connected_client.mkdir_p.assert_called_once()
-    mock_file.write.assert_called_once_with(b"data")
+def test_iso_utc():
+    assert sftp_client._iso(0) == "1970-01-01T00:00:00Z"
 
 
-def test_sftp_list_dir(connected_client):
-    mock_sftp = connected_client._sftp
+def test_cleanup_swallows_errors():
+    bad = mock.Mock()
+    bad.close.side_effect = IOError("boom")
+    sftp_client._cleanup(bad, bad)  # must not raise
+    bad.close.assert_called()
+
+
+# --------------------------------------------------------------------------- #
+# Public file operations (functional API)                                     #
+# --------------------------------------------------------------------------- #
+def _mkattr(filename, st_mode, size=1024):
+    a = mock.Mock()
+    a.filename = filename
+    a.st_mode = st_mode
+    a.st_size = size
+    a.st_uid = 1000
+    a.st_gid = 1000
+    a.st_mtime = 0
+    return a
+
+
+def test_list_dir_returns_sorted_entries(mock_connection):
+    _, _, mock_sftp = mock_connection
     mock_sftp.listdir_attr.return_value = [
-        mock.Mock(filename="file1.txt"),
-        mock.Mock(filename="dir1/"),
+        _mkattr("b.txt", 0o100644),
+        _mkattr("a-dir", 0o40755),
     ]
-    result = connected_client.list_dir("/remote/")
-    assert [r["name"] for r in result] == ["file1.txt", "dir1/"]
-    mock_sftp.listdir_attr.assert_called_once_with("/remote/")
+    result = sftp_client.list_dir("10.0.0.1", "/home/ubuntu")
+    assert result["ok"] is True
+    entries = result["data"]["entries"]
+    assert [e["name"] for e in entries] == ["a-dir", "b.txt"]  # dirs first
+    assert entries[0]["type"] == "dir"
+    assert entries[0]["display"] == "a-dir/"
+    assert entries[1]["type"] == "file"
+    assert entries[1]["path"] == "/home/ubuntu/b.txt"
+    assert entries[1]["perms_octal"] == "644"
+    assert entries[1]["mtime_iso"] == "1970-01-01T00:00:00Z"
+    mock_sftp.listdir_attr.assert_called_once_with("/home/ubuntu")
 
 
-def test_sftp_exists_file(connected_client):
-    mock_sftp = connected_client._sftp
-    mock_sftp.stat.return_value = mock.Mock()
-    assert connected_client.exists("/remote/file.txt") is True
-    mock_sftp.stat.assert_called_once_with("/remote/file.txt")
+def test_list_dir_error_returns_ok_false(mock_connection):
+    _, _, mock_sftp = mock_connection
+    mock_sftp.listdir_attr.side_effect = IOError("permission denied")
+    result = sftp_client.list_dir("10.0.0.1", "/root")
+    assert result["ok"] is False
+    assert "permission denied" in result["error"]
 
 
-def test_sftp_exists_not_found(connected_client):
-    import paramiko as real_paramiko
-    mock_sftp = connected_client._sftp
-    mock_sftp.stat.side_effect = real_paramiko.sftp.SFTPError("no such file")
-    assert connected_client.exists("/missing") is False
+def test_read_file_returns_decoded_content(mock_connection):
+    _, _, mock_sftp = mock_connection
+    mock_sftp.stat.return_value.st_size = 11
+    mock_file = mock.Mock()
+    mock_file.read.return_value = b"hello world"
+    mock_sftp.open.return_value.__enter__ = mock.Mock(return_value=mock_file)
+    mock_sftp.open.return_value.__exit__ = mock.Mock(return_value=False)
+    result = sftp_client.read_file("10.0.0.1", "/tmp/a.txt")
+    assert result["ok"] is True
+    assert result["data"]["content"] == "hello world"
+    assert result["data"]["size"] == 11
+    assert result["data"]["truncated"] is False
+    mock_file.set_pipelined.assert_called_once_with(True)
 
 
-def test_sftp_exists_returns_false_on_ioerror(connected_client):
-    mock_sftp = connected_client._sftp
+def test_read_file_marks_truncated_over_limit(mock_connection):
+    _, _, mock_sftp = mock_connection
+    mock_sftp.stat.return_value.st_size = 100
+    mock_file = mock.Mock()
+    mock_file.read.return_value = b"x" * 10
+    mock_sftp.open.return_value.__enter__ = mock.Mock(return_value=mock_file)
+    mock_sftp.open.return_value.__exit__ = mock.Mock(return_value=False)
+    result = sftp_client.read_file("10.0.0.1", "/big.bin", limit=10)
+    assert result["ok"] is True
+    assert result["data"]["size"] == 100
+    assert result["data"]["truncated"] is True
+    mock_file.read.assert_called_once_with(10)
+
+
+def test_read_file_missing_returns_error(mock_connection):
+    _, _, mock_sftp = mock_connection
+    mock_sftp.stat.side_effect = IOError("no such file")
+    result = sftp_client.read_file("10.0.0.1", "/missing.txt")
+    assert result["ok"] is False
+    assert "no such file" in result["error"]
+
+
+def test_write_file_writes_decoded_bytes(mock_connection):
+    _, _, mock_sftp = mock_connection
+    mock_file = mock.Mock()
+    mock_sftp.open.return_value.__enter__ = mock.Mock(return_value=mock_file)
+    mock_sftp.open.return_value.__exit__ = mock.Mock(return_value=False)
+    result = sftp_client.write_file("10.0.0.1", "/tmp/out.txt", base64.b64encode(b"data").decode())
+    assert result["ok"] is True
+    assert result["data"]["bytes"] == 4
+    assert result["data"]["path"] == "/tmp/out.txt"
+    mock_file.write.assert_called_once_with(b"data")
+
+
+def test_write_file_invalid_b64_returns_error(mock_connection):
+    result = sftp_client.write_file("10.0.0.1", "/tmp/bad", "!!!not-base64!!!")
+    assert result["ok"] is False
+    assert "Invalid base64" in result["error"]
+
+
+def test_write_file_sftp_error_returns_error(mock_connection):
+    _, _, mock_sftp = mock_connection
+    mock_sftp.open.side_effect = IOError("disk full")
+    result = sftp_client.write_file("10.0.0.1", "/tmp/out.txt", base64.b64encode(b"x").decode())
+    assert result["ok"] is False
+    assert "disk full" in result["error"]
+
+
+def test_delete_file_removes_regular_file(mock_connection):
+    _, _, mock_sftp = mock_connection
+    mock_sftp.stat.return_value.st_mode = 0o100644
+    result = sftp_client.delete_file("10.0.0.1", "/tmp/a.txt")
+    assert result["ok"] is True
+    assert result["data"]["deleted"] is True
+    mock_sftp.remove.assert_called_once_with("/tmp/a.txt")
+
+
+def test_delete_file_recursively_removes_dir(mock_connection):
+    _, _, mock_sftp = mock_connection
+    mock_sftp.stat.return_value.st_mode = 0o40755
+    mock_sftp.listdir_attr.return_value = []
+    result = sftp_client.delete_file("10.0.0.1", "/tmp/dir")
+    assert result["ok"] is True
+    mock_sftp.rmdir.assert_called_once_with("/tmp/dir")
+
+
+def test_delete_file_missing_returns_not_deleted(mock_connection):
+    _, _, mock_sftp = mock_connection
+    mock_sftp.stat.side_effect = FileNotFoundError("gone")
+    result = sftp_client.delete_file("10.0.0.1", "/missing")
+    assert result["ok"] is True
+    assert result["data"]["deleted"] is False
+
+
+def test_delete_file_error_returns_ok_false(mock_connection):
+    _, _, mock_sftp = mock_connection
     mock_sftp.stat.side_effect = IOError("permission denied")
-    assert connected_client.exists("/secret") is False
+    result = sftp_client.delete_file("10.0.0.1", "/secret")
+    assert result["ok"] is False
+    assert "permission denied" in result["error"]
 
 
-def test_sftp_remove(connected_client):
-    mock_sftp = connected_client._sftp
-    connected_client.remove("/remote/file.txt")
-    mock_sftp.remove.assert_called_once_with("/remote/file.txt")
+def test_stat_file_returns_metadata(mock_connection):
+    _, _, mock_sftp = mock_connection
+    st = mock.Mock()
+    st.st_size = 1024
+    st.st_mode = 0o100644
+    st.st_uid = 1000
+    st.st_gid = 1000
+    st.st_mtime = 0
+    mock_sftp.stat.return_value = st
+    result = sftp_client.stat_file("10.0.0.1", "/etc/hosts")
+    assert result["ok"] is True
+    data = result["data"]
+    assert data["path"] == "/etc/hosts"
+    assert data["size"] == 1024
+    assert data["perms_octal"] == "644"
+    assert data["is_file"] is True
+    assert data["is_dir"] is False
+    assert data["mtime_iso"] == "1970-01-01T00:00:00Z"
 
 
-def test_sftp_rename(connected_client):
-    mock_sftp = connected_client._sftp
-    connected_client.rename("/remote/old.txt", "/remote/new.txt")
-    mock_sftp.rename.assert_called_once_with("/remote/old.txt", "/remote/new.txt")
+def test_stat_file_error_returns_ok_false(mock_connection):
+    _, _, mock_sftp = mock_connection
+    mock_sftp.stat.side_effect = IOError("no such file")
+    result = sftp_client.stat_file("10.0.0.1", "/missing")
+    assert result["ok"] is False
 
 
-def test_sftp_stat(connected_client):
-    mock_sftp = connected_client._sftp
-    mock_stat = mock.Mock()
-    mock_stat.st_size = 1024
-    mock_sftp.stat.return_value = mock_stat
-    result = connected_client.stat("/remote/file.txt")
-    assert result.st_size == 1024
-    mock_sftp.stat.assert_called_once_with("/remote/file.txt")
+def test_get_disk_usage_computes_percent(mock_connection):
+    _, _, mock_sftp = mock_connection
+    vfs = mock.Mock()
+    vfs.f_frsize = 4096
+    vfs.f_blocks = 1000
+    vfs.f_bavail = 250
+    mock_sftp.statvfs.return_value = vfs
+    result = sftp_client.get_disk_usage("10.0.0.1", "/")
+    assert result["ok"] is True
+    data = result["data"]
+    assert data["total"] == 4_096_000
+    assert data["free"] == 1_024_000
+    assert data["used"] == 3_072_000
+    assert data["percent_used"] == 75.0
 
 
-def test_sftp_close_without_connect():
-    """close() must not raise if connect() was never called."""
-    client = sftp_client.SFTPClient("10.0.0.1")
-    assert client._ssh is None
-    client.close()  # should not raise
-
-
-def test_sftp_read_file_returns_bytes_on_empty_file(connected_client):
-    mock_sftp = connected_client._sftp
-    mock_file = mock.Mock()
-    mock_file.read.return_value = b""
-    mock_sftp.file.return_value.__enter__ = mock.Mock(return_value=mock_file)
-    mock_sftp.file.return_value.__exit__ = mock.Mock(return_value=False)
-    result = connected_client.read_file("/remote/empty.txt")
-    assert result == b""
-
-
-def test_sftp_write_file_ensure_parent_mkdirs(connected_client):
-    """When make_dirs=True and a multi-level path is given, mkdir_p is called."""
-    connected_client.mkdir_p = mock.Mock()
-    mock_sftp = connected_client._sftp
-    mock_file = mock.Mock()
-    mock_sftp.file.return_value.__enter__ = mock.Mock(return_value=mock_file)
-    mock_sftp.file.return_value.__exit__ = mock.Mock(return_value=False)
-    connected_client.write_file("/a/b/c/file.txt", b"hello", make_dirs=True)
-    mock_file.write.assert_called_once_with(b"hello")
-    connected_client.mkdir_p.assert_called_once()
+def test_get_disk_usage_error_returns_ok_false(mock_connection):
+    _, _, mock_sftp = mock_connection
+    mock_sftp.statvfs.side_effect = IOError("unsupported")
+    result = sftp_client.get_disk_usage("10.0.0.1", "/")
+    assert result["ok"] is False
 
 
 if __name__ == "__main__":

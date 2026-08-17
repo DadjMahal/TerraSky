@@ -19,8 +19,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # --- Audit: append-only hash chain ------------------------------------------
 def test_audit_hash_chain_append_query_tamper():
-    os.environ["SKYDASH_AUDIT_DIR"] = tempfile.mkdtemp(prefix="audit-test-")
-    import audit  # local import so AUDIT_DIR resolves per-run
+    import audit  # noqa: F401
+    # audit may already be imported by other test files, so the env var set at
+    # import time is ignored here. Redirect the module's dir + chain cache
+    # explicitly (mirrors the autouse fixture in test_audit.py) for isolation.
+    audit.AUDIT_DIR = tempfile.mkdtemp(prefix="audit-test-")
+    audit._SEQ_CACHE.clear()
 
     r1 = audit.add("tester", "server.stop", "instances/aws-hermes", detail={"status": 200}, ip="127.0.0.1")
     r2 = audit.add("tester", "server.start", "instances/aws-hermes")

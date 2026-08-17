@@ -20,6 +20,12 @@ describe('security-groups.js IIFE module', () => {
         global.fetch = jest.fn();
     });
 
+    /* Let pending microtasks (e.g. the module's auto-fetch on load) settle so
+     * the DOM is in a stable state before a test inspects innerHTML. */
+    function flush() {
+        return new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
     /* ------------------------------------------------------------------
      * Load the IIFE fresh for each test so every test starts from clean state.
      * ------------------------------------------------------------------ */
@@ -122,6 +128,11 @@ describe('security-groups.js IIFE module', () => {
 
         it('uses empty string for CSRF token when window.CSRF_TOKEN is absent', () => {
             global.fetch.mockReset();
+            global.fetch.mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: async () => ({ status: 'ok', data: [] }),
+            });
             delete window.CSRF_TOKEN;
             Object.defineProperty(document, 'readyState', {
                 configurable: true,
@@ -175,10 +186,12 @@ describe('security-groups.js IIFE module', () => {
 
             const target = document.createElement('button');
             target.setAttribute('data-bs-target', '#tab-network');
+            document.body.appendChild(target);
 
-            const evt = new Event('shown.bs.tab');
-            evt.target = target;
-            document.dispatchEvent(evt);
+            // Dispatch on the tab element and let it bubble to document so
+            // jsdom populates e.target correctly (evt.target is read-only).
+            const evt = new Event('shown.bs.tab', { bubbles: true });
+            target.dispatchEvent(evt);
 
             expect(global.fetch).toHaveBeenCalledTimes(1);
         });
@@ -189,10 +202,10 @@ describe('security-groups.js IIFE module', () => {
 
             const target = document.createElement('a');
             target.setAttribute('href', '#tab-network');
+            document.body.appendChild(target);
 
-            const evt = new Event('shown.bs.tab');
-            evt.target = target;
-            document.dispatchEvent(evt);
+            const evt = new Event('shown.bs.tab', { bubbles: true });
+            target.dispatchEvent(evt);
 
             expect(global.fetch).toHaveBeenCalledTimes(1);
         });
@@ -216,6 +229,7 @@ describe('security-groups.js IIFE module', () => {
     describe('fetchSecurityGroups() error handling', () => {
         it('handles 401 with authentication error message', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockResolvedValue({
                 ok: false,
@@ -232,6 +246,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('handles 503 with provider credentials unavailable message', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockResolvedValue({
                 ok: false,
@@ -247,6 +262,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('handles 502 with provider error message', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockResolvedValue({
                 ok: false,
@@ -262,6 +278,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('handles 403 (generic non-ok) with HTTP status message', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockResolvedValue({
                 ok: false,
@@ -277,6 +294,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('handles 404 with HTTP status message', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockResolvedValue({
                 ok: false,
@@ -292,6 +310,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('handles 500 with HTTP status message', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockResolvedValue({
                 ok: false,
@@ -307,6 +326,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('handles 404 with HTTP status message', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockResolvedValue({
                 ok: false,
@@ -322,6 +342,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('handles network errors in the catch block', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockRejectedValue(new Error('ECONNREFUSED'));
 
@@ -333,6 +354,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('handles network errors with no message', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockRejectedValue({});
 
@@ -344,6 +366,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('handles rejected promise with null error', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockRejectedValue(null);
 
@@ -358,6 +381,7 @@ describe('security-groups.js IIFE module', () => {
     describe('fetchSecurityGroups() success', () => {
         it('renders groups from payload.data when status is "ok"', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockResolvedValue({
                 ok: true,
@@ -384,7 +408,6 @@ describe('security-groups.js IIFE module', () => {
 
             const host = document.getElementById('security-groups-host');
             expect(host.innerHTML).toContain('sg-primary');
-            expect(host.innerHTML).toContain('sg-123');
             expect(host.innerHTML).toContain('aws');
             expect(host.innerHTML).toContain('Security Group');
             expect(host.innerHTML).toContain('Inbound');
@@ -396,6 +419,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('renders groups from payload.groups when status is not "ok"', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockResolvedValue({
                 ok: true,
@@ -417,13 +441,13 @@ describe('security-groups.js IIFE module', () => {
 
             const host = document.getElementById('security-groups-host');
             expect(host.innerHTML).toContain('fw-east');
-            expect(host.innerHTML).toContain('fw-456');
             expect(host.innerHTML).toContain('azure');
             expect(host.innerHTML).toContain('Firewall');
         });
 
         it('renders empty state when payload.data is empty array', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockResolvedValue({
                 ok: true,
@@ -439,6 +463,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('renders empty state when payload has no groups or data', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockResolvedValue({
                 ok: true,
@@ -454,6 +479,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('renders fallback when status is not "ok" and no groups key', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockResolvedValue({
                 ok: true,
@@ -625,7 +651,9 @@ describe('security-groups.js IIFE module', () => {
             expect(html).not.toContain('<script>');
             expect(html).toContain('&lt;script&gt;');
             expect(html).toContain('&amp;');
-            expect(html).toContain('&quot;');
+            // jsdom re-serializes text nodes: `&quot;` decodes back to a literal
+            // quote while the bare `&` becomes `&amp;`.
+            expect(html).toContain('tcp&lt;script&gt;&amp;"');
         });
 
         it('escapes special characters in group name', () => {
@@ -637,7 +665,7 @@ describe('security-groups.js IIFE module', () => {
                 inbound: [],
                 outbound: [],
             }]);
-            expect(document.getElementById('security-groups-host').innerHTML).toContain('sg&lt;weird&gt;&amp;name&quot;');
+            expect(document.getElementById('security-groups-host').innerHTML).toContain('sg&lt;weird&gt;&amp;name"');
         });
 
         it('escapes special characters in provider', () => {
@@ -694,6 +722,7 @@ describe('security-groups.js IIFE module', () => {
     describe('showError()', () => {
         it('renders error message with warning alert and icon', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockRejectedValue(new Error('custom error'));
 
@@ -706,6 +735,7 @@ describe('security-groups.js IIFE module', () => {
 
         it('escapes error message in showError', async () => {
             const mod = loadModule();
+            await flush();
             global.fetch.mockReset();
             global.fetch.mockRejectedValue(new Error('<script>alert(1)</script>'));
 

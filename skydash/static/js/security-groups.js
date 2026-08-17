@@ -103,7 +103,8 @@
 
     function fetchSecurityGroups() {
         var url = "/api/v1/instance/" + encodeURIComponent(SLUG) + "/security-groups";
-        fetch(url, { headers: { "X-CSRF-Token": window.CSRF_TOKEN || "" } })
+        // Return the whole chain so callers (and tests) can await completion.
+        return fetch(url, { headers: { "X-CSRF-Token": window.CSRF_TOKEN || "" } })
             .then(function (r) {
                 if (r.status === 401) {
                     showError("Authentication required to view security groups.");
@@ -152,14 +153,21 @@
     }
 
     // Re-fetch when the user opens the Network tab (Bootstrap pill shown event).
-    document.addEventListener("shown.bs.tab", function (e) {
+    function onTabShown(e) {
         var target = e.target;
         if (target && target.getAttribute &&
             (target.getAttribute("data-bs-target") === "#tab-network" ||
              target.getAttribute("href") === "#tab-network")) {
             fetchSecurityGroups();
         }
-    });
+    }
+
+    // Guard against double-registration when the script is re-evaluated
+    // (e.g. in test environments that reload the IIFE per case).
+    if (!window.__SKYDASH_SG_TAB_LISTENER__) {
+        document.addEventListener("shown.bs.tab", onTabShown);
+        window.__SKYDASH_SG_TAB_LISTENER__ = true;
+    }
 
     // Expose for testing / manual refresh.
     window.SkyDashSecurityGroups = { fetch: fetchSecurityGroups, render: render };
