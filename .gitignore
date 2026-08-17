@@ -23,6 +23,7 @@
 !docs/**
 !package.json
 !package-lock.json
+!jest.config.js
 !skydash/requirements.txt
 !tests/
 !tests/**
