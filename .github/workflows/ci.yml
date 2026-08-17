@@ -16,7 +16,7 @@ jobs:
           node-version: '18'
           cache: 'npm'
       - run: npm ci
-      - run: npx jest tests/test_file_manager_js.js tests/test_security_groups_js.js --ci
+      - run: npx jest tests/ --ci
 
   backend-tests:
     runs-on: ubuntu-latest

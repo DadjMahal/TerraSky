@@ -8,7 +8,6 @@ SKYDASH_ADMIN_PASSWORD env var).
 from __future__ import annotations
 
 import functools
-import os
 from datetime import timedelta
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
